@@ -13,6 +13,7 @@ use App\Models\Purchase;
 use App\Models\Sale;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AccountingService
 {
