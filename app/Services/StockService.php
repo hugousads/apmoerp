@@ -146,15 +146,13 @@ class StockService
     ): StockMovement {
         return DB::transaction(function () use ($productId, $warehouseId, $quantity, $type, $reference, $notes, $referenceId, $referenceType) {
             // STILL-V7-HIGH-N07 FIX: Lock the rows for this product+warehouse combination
-            // to prevent concurrent transactions from reading stale stock_before values
-            $lockedMovements = DB::table('stock_movements')
+            // and calculate stock at database level for efficiency
+            $stockBefore = (float) DB::table('stock_movements')
                 ->where('product_id', $productId)
                 ->where('warehouse_id', $warehouseId)
                 ->lockForUpdate()
-                ->get();
+                ->sum('quantity');
 
-            // Calculate current stock with the lock held
-            $stockBefore = (float) $lockedMovements->sum('quantity');
             $stockAfter = $stockBefore + $quantity;
 
             // Create the stock movement record

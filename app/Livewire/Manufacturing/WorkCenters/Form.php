@@ -95,7 +95,15 @@ class Form extends Component
 
         if (empty($base)) {
             // V8-HIGH-N02 FIX: Use lockForUpdate and filter by branch to prevent race condition
-            $branchId = auth()->user()?->branch_id ?? Branch::first()?->id;
+            // Cache branch first to avoid repeated queries
+            $user = auth()->user();
+            $branchId = $user?->branch_id;
+            if (! $branchId) {
+                $branchId = \Illuminate\Support\Facades\Cache::remember('default_branch_id', 3600, function () {
+                    return Branch::first()?->id;
+                });
+            }
+            
             $lastWc = WorkCenter::when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->lockForUpdate()
                 ->orderBy('id', 'desc')

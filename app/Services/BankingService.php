@@ -294,8 +294,8 @@ class BankingService
         $availableBalance = $this->getAccountBalance($data['account_id']);
         if (bccomp($availableBalance, (string) $data['amount'], 2) < 0) {
             throw new \InvalidArgumentException(sprintf(
-                'Insufficient balance for withdrawal. Available: %s, Requested: %.2f',
-                $availableBalance,
+                'Insufficient balance for withdrawal. Available: %.2f, Requested: %.2f',
+                (float) $availableBalance,
                 $data['amount']
             ));
         }
