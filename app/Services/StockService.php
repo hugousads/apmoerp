@@ -122,7 +122,7 @@ class StockService
      * Positive quantity adds stock, negative quantity removes stock.
      *
      * @param int $productId The product ID
-     * @param int|null $warehouseId The warehouse ID
+     * @param int $warehouseId The warehouse ID (required for stock movements)
      * @param float $quantity The quantity to adjust (positive = add, negative = remove)
      * @param string $type The movement type (use StockMovement::TYPE_* constants)
      * @param string|null $reference Reference description for the movement
@@ -130,10 +130,11 @@ class StockService
      * @param int|null $referenceId Reference ID for polymorphic relation
      * @param string|null $referenceType Reference type for polymorphic relation
      * @return StockMovement The created stock movement record
+     * @throws \InvalidArgumentException If warehouseId is null
      */
     public function adjustStock(
         int $productId,
-        ?int $warehouseId,
+        int $warehouseId,
         float $quantity,
         string $type,
         ?string $reference = null,

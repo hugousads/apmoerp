@@ -182,7 +182,7 @@ class StockTransferService
      */
     public function shipTransfer(int $transferId, array $shippingData): StockTransfer
     {
-        // Input validation
+        // V6-MEDIUM-04 FIX: Explicit validation of payload shape with item IDs
         $validated = validator($shippingData, [
             'tracking_number' => 'nullable|string|max:100',
             'courier_name' => 'nullable|string|max:100',
@@ -190,6 +190,7 @@ class StockTransferService
             'driver_name' => 'nullable|string|max:100',
             'driver_phone' => 'nullable|string|max:20',
             'items' => 'nullable|array',
+            'items.*.id' => 'nullable|integer|exists:stock_transfer_items,id',
             'items.*.qty_shipped' => 'nullable|numeric|min:0',
         ])->validate();
 
@@ -204,9 +205,34 @@ class StockTransferService
                     "Transfer {$transfer->transfer_number} cannot be shipped in {$transfer->status} status"
                 );
 
+                // V6-MEDIUM-04 FIX: Build a map from item ID to qty_shipped for proper lookup
+                $itemQuantities = [];
+                if (isset($validated['items']) && is_array($validated['items'])) {
+                    foreach ($validated['items'] as $key => $itemData) {
+                        // Support both indexed array with 'id' field and associative array keyed by item ID
+                        $itemId = $itemData['id'] ?? $key;
+                        if (is_numeric($itemId) && isset($itemData['qty_shipped'])) {
+                            $itemQuantities[(int) $itemId] = (float) $itemData['qty_shipped'];
+                        }
+                    }
+                }
+
                 // Move stock from source warehouse to transit table
                 foreach ($transfer->items as $item) {
-                    $qtyToShip = $validated['items'][$item->id]['qty_shipped'] ?? $item->qty_approved;
+                    $qtyToShip = $itemQuantities[$item->id] ?? $item->qty_approved;
+
+                    // V6-MEDIUM-04 FIX: Enforce qty_shipped <= qty_approved
+                    if ($qtyToShip > $item->qty_approved) {
+                        abort(
+                            422,
+                            "Cannot ship {$qtyToShip} units for item {$item->id}. Maximum approved: {$item->qty_approved}"
+                        );
+                    }
+
+                    // Skip if nothing to ship
+                    if ($qtyToShip <= 0) {
+                        continue;
+                    }
 
                     // Update item shipped quantity
                     $item->update(['qty_shipped' => $qtyToShip]);
@@ -263,9 +289,10 @@ class StockTransferService
      */
     public function receiveTransfer(int $transferId, array $receivingData): StockTransfer
     {
-        // Input validation
+        // V6-MEDIUM-04 FIX: Explicit validation of payload shape with item IDs
         $validated = validator($receivingData, [
             'items' => 'required|array',
+            'items.*.id' => 'nullable|integer|exists:stock_transfer_items,id',
             'items.*.qty_received' => 'nullable|numeric|min:0',
             'items.*.qty_damaged' => 'nullable|numeric|min:0',
             'items.*.condition' => 'nullable|string|max:50',
@@ -283,12 +310,33 @@ class StockTransferService
                     "Transfer {$transfer->transfer_number} cannot be received in {$transfer->status} status"
                 );
 
+                // V6-MEDIUM-04 FIX: Build a map from item ID to receiving data for proper lookup
+                $itemReceivingMap = [];
+                if (isset($validated['items']) && is_array($validated['items'])) {
+                    foreach ($validated['items'] as $key => $itemData) {
+                        // Support both indexed array with 'id' field and associative array keyed by item ID
+                        $itemId = $itemData['id'] ?? $key;
+                        if (is_numeric($itemId)) {
+                            $itemReceivingMap[(int) $itemId] = $itemData;
+                        }
+                    }
+                }
+
                 // Process received items and move from transit to destination
                 foreach ($transfer->items as $item) {
-                    $itemReceivingData = $validated['items'][$item->id] ?? [];
+                    $itemReceivingData = $itemReceivingMap[$item->id] ?? [];
 
                     $qtyReceived = (float) ($itemReceivingData['qty_received'] ?? $item->qty_shipped);
                     $qtyDamaged = (float) ($itemReceivingData['qty_damaged'] ?? 0);
+                    
+                    // V6-MEDIUM-04 FIX: Enforce qty_received <= qty_shipped
+                    if ($qtyReceived > $item->qty_shipped) {
+                        abort(
+                            422,
+                            "Cannot receive {$qtyReceived} units for item {$item->id}. Maximum shipped: {$item->qty_shipped}"
+                        );
+                    }
+                    
                     $qtyGood = $qtyReceived - $qtyDamaged;
 
                     // Update item

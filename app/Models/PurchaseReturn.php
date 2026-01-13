@@ -84,6 +84,7 @@ class PurchaseReturn extends Model
 
     /**
      * Generate unique return number
+     * V6-CRITICAL-08 FIX: Use database locking to prevent race conditions and scope by branch
      */
     public static function generateReturnNumber(?int $branchId = null): string
     {
@@ -91,8 +92,11 @@ class PurchaseReturn extends Model
         $branchCode = $branchId ? str_pad($branchId, 3, '0', STR_PAD_LEFT) : '000';
         $date = now()->format('Ymd');
         
-        $lastReturn = static::whereDate('created_at', now()->toDateString())
-            ->orderByDesc('id')
+        // Use lockForUpdate to prevent race conditions during concurrent creation
+        // Also properly scope by branch_id in the query
+        $lastReturn = static::where('return_number', 'like', "{$prefix}-{$branchCode}-{$date}-%")
+            ->lockForUpdate()
+            ->orderByDesc('return_number')
             ->first();
         
         $sequence = $lastReturn ? ((int) substr($lastReturn->return_number, -4)) + 1 : 1;
