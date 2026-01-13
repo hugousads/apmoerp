@@ -138,27 +138,14 @@ class StoreIntegrationController extends Controller
                     continue;
                 }
 
-                // Note: Stock should be managed through stock_movements table
-                // This sync is no longer updating stock directly
-                // Create stock movement record for tracking
-                if ($saleItem->product && $sale->warehouse_id) {
-                    // Use repository for proper schema mapping
-                    $this->stockMovementRepo->create([
-                        'product_id' => $saleItem->product_id,
-                        'warehouse_id' => $sale->warehouse_id,
-                        'qty' => abs((float) $saleItem->quantity),
-                        'direction' => 'out',
-                        'movement_type' => 'sale',
-                        'reference_type' => 'sale',
-                        'reference_id' => $sale->id,
-                        'notes' => "Sale from store order #{$storeOrder->store_order_number}",
-                    ]);
-                }
+                // Note: Direct stock sync is disabled.
+                // Stock should be managed through stock_movements table.
+                // The StoreOrderToSaleService handles stock movements when converting orders to sales.
 
                 $updated[] = [
                     'type' => $type,
                     'id' => $target->getKey(),
-                    'note' => 'Stock sync disabled - use stock movements',
+                    'note' => 'Stock sync disabled - use stock movements through order conversion',
                 ];
             } catch (\Throwable $e) {
                 $errors[] = [

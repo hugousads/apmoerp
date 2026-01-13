@@ -22,14 +22,50 @@ use Illuminate\Database\Eloquent\Scope;
 class BranchScope implements Scope
 {
     /**
+     * Console commands that should skip branch scope entirely.
+     * These are safe commands that don't need branch isolation (e.g., migrations, seeders).
+     * Queue workers and scheduled tasks should NOT skip branch scope.
+     */
+    protected const SAFE_CONSOLE_COMMANDS = [
+        'migrate',
+        'migrate:fresh',
+        'migrate:install',
+        'migrate:refresh',
+        'migrate:reset',
+        'migrate:rollback',
+        'migrate:status',
+        'db:seed',
+        'db:wipe',
+        'tinker',
+        'config:cache',
+        'config:clear',
+        'cache:clear',
+        'cache:forget',
+        'route:cache',
+        'route:clear',
+        'view:cache',
+        'view:clear',
+        'optimize',
+        'optimize:clear',
+        'key:generate',
+        'storage:link',
+        'vendor:publish',
+        'package:discover',
+        'ide-helper:generate',
+        'ide-helper:models',
+        'ide-helper:meta',
+    ];
+
+    /**
      * Apply the branch scope to a given Eloquent query builder.
      *
      * @param  \Illuminate\Database\Eloquent\Builder<Model>  $builder
      */
     public function apply(Builder $builder, Model $model): void
     {
-        // Skip scope if running in console (migrations, seeders, etc.)
-        if (app()->runningInConsole() && ! app()->runningUnitTests()) {
+        // Skip scope only for safe console commands (migrations, seeders, etc.)
+        // CRITICAL: Queue workers and scheduled tasks MUST apply branch scope
+        if (app()->runningInConsole() && ! app()->runningUnitTests() && $this->isSafeConsoleCommand()) {
             return;
         }
 
@@ -121,5 +157,39 @@ class BranchScope implements Scope
         $fillable = $model->getFillable();
 
         return in_array('branch_id', $fillable, true);
+    }
+
+    /**
+     * Check if the current console command is in the safe list.
+     * Safe commands don't need branch isolation (e.g., migrations, seeders).
+     */
+    protected function isSafeConsoleCommand(): bool
+    {
+        // Get the current artisan command
+        $argv = $_SERVER['argv'] ?? [];
+
+        if (empty($argv)) {
+            return false;
+        }
+
+        // Find the command name (usually the second argument after 'artisan')
+        foreach ($argv as $arg) {
+            // Skip 'artisan' and options starting with '-'
+            if ($arg === 'artisan' || str_starts_with($arg, '-')) {
+                continue;
+            }
+
+            // Check if this is a safe command
+            foreach (self::SAFE_CONSOLE_COMMANDS as $safeCommand) {
+                if ($arg === $safeCommand || str_starts_with($arg, $safeCommand.':')) {
+                    return true;
+                }
+            }
+
+            // Found a command that's not safe
+            return false;
+        }
+
+        return false;
     }
 }

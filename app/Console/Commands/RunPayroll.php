@@ -49,7 +49,7 @@ class RunPayroll extends Command
         $this->line($pay ? 'Payment: ON' : 'Payment: OFF');
 
         // Resolve branches
-        $branches = Branch::query()->where('active', true);
+        $branches = Branch::query()->where('is_active', true);
         if (! empty($targets)) {
             $branches->where(function ($q) use ($targets) {
                 $q->whereIn('id', $targets)->orWhereIn('code', $targets);

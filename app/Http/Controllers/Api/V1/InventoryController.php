@@ -322,7 +322,7 @@ class InventoryController extends BaseApiController
             $warehouse = Warehouse::query()
                 ->where('id', $preferredId)
                 ->when($branchContext, fn ($q, $branch) => $q->where('branch_id', $branch))
-                ->where('status', 'active')
+                ->where('is_active', true)
                 ->first();
 
             if (! $warehouse) {
@@ -339,7 +339,7 @@ class InventoryController extends BaseApiController
         if ($defaultWarehouseId !== null) {
             $defaultWarehouse = Warehouse::query()
                 ->where('id', $defaultWarehouseId)
-                ->where('status', 'active')
+                ->where('is_active', true)
                 ->when($branchContext, fn ($q, $branch) => $q->where('branch_id', $branch))
                 ->first();
 
@@ -351,7 +351,7 @@ class InventoryController extends BaseApiController
         // Try to get warehouse from branch context
         if ($branchContext !== null) {
             $branchWarehouse = \App\Models\Warehouse::where('branch_id', $branchContext)
-                ->where('status', 'active')
+                ->where('is_active', true)
                 ->first();
 
             if ($branchWarehouse) {
@@ -363,7 +363,7 @@ class InventoryController extends BaseApiController
         }
 
         // Fall back to first available active warehouse when no branch context is provided
-        $firstWarehouse = \App\Models\Warehouse::where('status', 'active')->first();
+        $firstWarehouse = \App\Models\Warehouse::where('is_active', true)->first();
 
         return $firstWarehouse?->id;
     }
