@@ -36,7 +36,7 @@ class GenerateRecurringInvoices extends Command
         $this->info("Recurring Invoices generation for {$dateStr}".(count($targets) ? ' | targeted branches supplied' : ' | all eligible branches'));
 
         // Resolve branches
-        $branches = Branch::query()->where('active', true);
+        $branches = Branch::query()->where('is_active', true);
         if (! empty($targets)) {
             $branches->where(function ($q) use ($targets) {
                 $q->whereIn('id', $targets)->orWhereIn('code', $targets);

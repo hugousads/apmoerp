@@ -187,6 +187,18 @@ class StoreOrderToSaleService
             } catch (\Throwable $e) {
             }
 
+            // HIGH-03 FIX: Skip items without product mapping to avoid null product_id
+            if ($productId === null) {
+                Log::warning('StoreOrderToSaleService: skipping item with unmapped product', [
+                    'order_id' => $order->getKey(),
+                    'sku' => $item['sku'] ?? null,
+                    'variation_id' => $item['variation_id'] ?? null,
+                    'variation_sku' => $item['variation_sku'] ?? null,
+                ]);
+
+                continue;
+            }
+
             $data = [];
 
             foreach ($fillable as $field) {
@@ -212,6 +224,7 @@ class StoreOrderToSaleService
                         break;
                     case 'discount':
                     case 'discount_total':
+                    case 'discount_amount':
                         $data[$field] = $discount;
                         break;
                     case 'total':

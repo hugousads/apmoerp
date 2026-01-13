@@ -314,8 +314,10 @@ class StoreSyncService
             return;
         }
 
+        // CRITICAL-05 FIX: Add branch_id scoping to idempotency check
         $existingOrder = Sale::where('external_reference', $externalId)
             ->where('channel', 'shopify')
+            ->where('branch_id', $store->branch_id)
             ->first();
 
         if ($existingOrder) {
@@ -331,24 +333,28 @@ class StoreSyncService
             $customerId = null;
 
             if ($customerData) {
+                // CRITICAL-05 FIX: Add branch_id to customer lookup to prevent cross-branch customer reuse
                 $customer = Customer::firstOrCreate(
-                    ['email' => $customerData['email'] ?? 'shopify-'.($customerData['id'] ?? '').'@unknown.com'],
+                    [
+                        'email' => $customerData['email'] ?? 'shopify-'.($customerData['id'] ?? '').'@unknown.com',
+                        'branch_id' => $store->branch_id,
+                    ],
                     [
                         'name' => trim(($customerData['first_name'] ?? '').' '.($customerData['last_name'] ?? '')),
                         'phone' => $customerData['phone'] ?? null,
-                        'branch_id' => $store->branch_id,
                     ]
                 );
                 $customerId = $customer->id;
             }
 
+            // CRITICAL-05 FIX: Use correct schema column names
             $sale = Sale::create([
                 'branch_id' => $store->branch_id,
                 'customer_id' => $customerId,
-                'sub_total' => (float) ($data['subtotal_price'] ?? 0),
-                'tax_total' => (float) ($data['total_tax'] ?? 0),
-                'discount_total' => (float) ($data['total_discounts'] ?? 0),
-                'grand_total' => (float) ($data['total_price'] ?? 0),
+                'subtotal' => (float) ($data['subtotal_price'] ?? 0),
+                'tax_amount' => (float) ($data['total_tax'] ?? 0),
+                'discount_amount' => (float) ($data['total_discounts'] ?? 0),
+                'total_amount' => (float) ($data['total_price'] ?? 0),
                 'status' => $this->mapShopifyOrderStatus($data['financial_status'] ?? 'pending'),
                 'channel' => 'shopify',
                 'external_reference' => $externalId,
@@ -359,11 +365,25 @@ class StoreSyncService
                     ->where('external_id', (string) $lineItem['product_id'])
                     ->first();
 
+                // CRITICAL-05 FIX: Skip items without product mapping to avoid null product_id
+                $productId = $productMapping?->product_id;
+                if ($productId === null) {
+                    Log::warning('Shopify order sync: skipping line item with unmapped product', [
+                        'store_id' => $store->id,
+                        'external_order_id' => $externalId,
+                        'external_product_id' => $lineItem['product_id'] ?? null,
+                        'sku' => $lineItem['sku'] ?? null,
+                    ]);
+
+                    continue;
+                }
+
+                // CRITICAL-05 FIX: Use correct SaleItem schema column names
                 $sale->items()->create([
-                    'product_id' => $productMapping?->product_id,
-                    'qty' => (int) ($lineItem['quantity'] ?? 1),
+                    'product_id' => $productId,
+                    'quantity' => (int) ($lineItem['quantity'] ?? 1),
                     'unit_price' => (float) ($lineItem['price'] ?? 0),
-                    'discount' => (float) ($lineItem['total_discount'] ?? 0),
+                    'discount_amount' => (float) ($lineItem['total_discount'] ?? 0),
                     'line_total' => (float) ($lineItem['quantity'] ?? 1) * (float) ($lineItem['price'] ?? 0) - (float) ($lineItem['total_discount'] ?? 0),
                 ]);
             }
@@ -417,8 +437,10 @@ class StoreSyncService
             return;
         }
 
+        // CRITICAL-05 FIX: Add branch_id scoping to idempotency check
         $existingOrder = Sale::where('external_reference', $externalId)
             ->where('channel', 'woocommerce')
+            ->where('branch_id', $store->branch_id)
             ->first();
 
         if ($existingOrder) {
@@ -434,27 +456,31 @@ class StoreSyncService
             $customerId = null;
 
             if (! empty($billing['email'])) {
+                // CRITICAL-05 FIX: Add branch_id to customer lookup to prevent cross-branch customer reuse
                 $customer = Customer::firstOrCreate(
-                    ['email' => $billing['email']],
+                    [
+                        'email' => $billing['email'],
+                        'branch_id' => $store->branch_id,
+                    ],
                     [
                         'name' => trim(($billing['first_name'] ?? '').' '.($billing['last_name'] ?? '')),
                         'phone' => $billing['phone'] ?? null,
                         'address' => ($billing['address_1'] ?? '').' '.($billing['address_2'] ?? ''),
                         'city' => $billing['city'] ?? null,
                         'country' => $billing['country'] ?? null,
-                        'branch_id' => $store->branch_id,
                     ]
                 );
                 $customerId = $customer->id;
             }
 
+            // CRITICAL-05 FIX: Use correct schema column names
             $sale = Sale::create([
                 'branch_id' => $store->branch_id,
                 'customer_id' => $customerId,
-                'sub_total' => (float) ($data['total'] ?? 0) - (float) ($data['total_tax'] ?? 0),
-                'tax_total' => (float) ($data['total_tax'] ?? 0),
-                'discount_total' => (float) ($data['discount_total'] ?? 0),
-                'grand_total' => (float) ($data['total'] ?? 0),
+                'subtotal' => (float) ($data['total'] ?? 0) - (float) ($data['total_tax'] ?? 0),
+                'tax_amount' => (float) ($data['total_tax'] ?? 0),
+                'discount_amount' => (float) ($data['discount_total'] ?? 0),
+                'total_amount' => (float) ($data['total'] ?? 0),
                 'status' => $this->mapWooOrderStatus($data['status'] ?? 'pending'),
                 'channel' => 'woocommerce',
                 'external_reference' => $externalId,
@@ -465,11 +491,25 @@ class StoreSyncService
                     ->where('external_id', (string) $lineItem['product_id'])
                     ->first();
 
+                // CRITICAL-05 FIX: Skip items without product mapping to avoid null product_id
+                $productId = $productMapping?->product_id;
+                if ($productId === null) {
+                    Log::warning('WooCommerce order sync: skipping line item with unmapped product', [
+                        'store_id' => $store->id,
+                        'external_order_id' => $externalId,
+                        'external_product_id' => $lineItem['product_id'] ?? null,
+                        'sku' => $lineItem['sku'] ?? null,
+                    ]);
+
+                    continue;
+                }
+
+                // CRITICAL-05 FIX: Use correct SaleItem schema column names
                 $sale->items()->create([
-                    'product_id' => $productMapping?->product_id,
-                    'qty' => (int) ($lineItem['quantity'] ?? 1),
+                    'product_id' => $productId,
+                    'quantity' => (int) ($lineItem['quantity'] ?? 1),
                     'unit_price' => (float) ($lineItem['price'] ?? 0),
-                    'discount' => 0,
+                    'discount_amount' => 0,
                     'line_total' => (float) ($lineItem['total'] ?? 0),
                 ]);
             }
@@ -620,8 +660,10 @@ class StoreSyncService
             return;
         }
 
+        // CRITICAL-05 FIX: Add branch_id scoping to idempotency check
         $existingOrder = Sale::where('external_reference', $externalId)
             ->where('channel', 'laravel')
+            ->where('branch_id', $store->branch_id)
             ->first();
 
         if ($existingOrder) {
@@ -638,25 +680,29 @@ class StoreSyncService
             // Try to find or create customer
             $customerData = $data['customer'] ?? [];
             if (! empty($customerData['email'])) {
+                // CRITICAL-05 FIX: Add branch_id to customer lookup to prevent cross-branch customer reuse
                 $customer = Customer::firstOrCreate(
-                    ['email' => $customerData['email']],
+                    [
+                        'email' => $customerData['email'],
+                        'branch_id' => $store->branch_id,
+                    ],
                     [
                         'name' => $customerData['name'] ?? 'Unknown',
                         'phone' => $customerData['phone'] ?? null,
                         'address' => $customerData['address'] ?? null,
-                        'branch_id' => $store->branch_id,
                     ]
                 );
                 $customerId = $customer->id;
             }
 
+            // CRITICAL-05 FIX: Use correct schema column names
             $sale = Sale::create([
                 'branch_id' => $store->branch_id,
                 'customer_id' => $customerId,
-                'sub_total' => (float) ($data['sub_total'] ?? $data['subtotal'] ?? 0),
-                'tax_total' => (float) ($data['tax_total'] ?? $data['tax'] ?? 0),
-                'discount_total' => (float) ($data['discount_total'] ?? $data['discount'] ?? 0),
-                'grand_total' => (float) ($data['grand_total'] ?? $data['total'] ?? 0),
+                'subtotal' => (float) ($data['sub_total'] ?? $data['subtotal'] ?? 0),
+                'tax_amount' => (float) ($data['tax_total'] ?? $data['tax'] ?? 0),
+                'discount_amount' => (float) ($data['discount_total'] ?? $data['discount'] ?? 0),
+                'total_amount' => (float) ($data['grand_total'] ?? $data['total'] ?? 0),
                 'status' => $data['status'] ?? 'pending',
                 'channel' => 'laravel',
                 'external_reference' => $externalId,
@@ -667,13 +713,26 @@ class StoreSyncService
                     ->where('external_id', (string) ($lineItem['product_id'] ?? ''))
                     ->first();
 
+                // CRITICAL-05 FIX: Skip items without product mapping to avoid null product_id
+                $productId = $productMapping?->product_id;
+                if ($productId === null) {
+                    Log::warning('Laravel order sync: skipping line item with unmapped product', [
+                        'store_id' => $store->id,
+                        'external_order_id' => $externalId,
+                        'external_product_id' => $lineItem['product_id'] ?? null,
+                        'sku' => $lineItem['sku'] ?? null,
+                    ]);
+
+                    continue;
+                }
+
+                // CRITICAL-05 FIX: Use correct SaleItem schema column names
                 $sale->items()->create([
-                    'product_id' => $productMapping?->product_id,
-                    'qty' => (float) ($lineItem['qty'] ?? $lineItem['quantity'] ?? 1),
+                    'product_id' => $productId,
+                    'quantity' => (float) ($lineItem['qty'] ?? $lineItem['quantity'] ?? 1),
                     'unit_price' => (float) ($lineItem['unit_price'] ?? $lineItem['price'] ?? 0),
-                    'discount' => (float) ($lineItem['discount'] ?? 0),
+                    'discount_amount' => (float) ($lineItem['discount'] ?? 0),
                     'line_total' => (float) ($lineItem['line_total'] ?? $lineItem['total'] ?? 0),
-                    'branch_id' => $store->branch_id,
                 ]);
             }
         });

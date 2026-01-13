@@ -52,7 +52,7 @@ class ABCAnalysisService
                     ->select(
                         'product_id',
                         DB::raw('SUM(line_total) as total_revenue'),
-                        DB::raw('SUM(qty) as total_qty'),
+                        DB::raw('SUM(quantity) as total_qty'),
                         DB::raw('COUNT(DISTINCT sale_id) as order_count')
                     )
                     ->whereHas('sale', function ($q) use ($branchId, $startDate, $endDate) {
@@ -164,7 +164,7 @@ class ABCAnalysisService
                 $query = SaleItem::query()
                     ->select(
                         'product_id',
-                        DB::raw('SUM(qty) as total_qty'),
+                        DB::raw('SUM(quantity) as total_qty'),
                         DB::raw('SUM(line_total) as total_revenue')
                     )
                     ->whereHas('sale', function ($q) use ($branchId, $startDate, $endDate) {

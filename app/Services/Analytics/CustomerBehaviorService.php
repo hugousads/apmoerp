@@ -194,7 +194,7 @@ class CustomerBehaviorService
                 $purchases = SaleItem::query()
                     ->select(
                         'product_id',
-                        DB::raw('SUM(qty) as total_qty'),
+                        DB::raw('SUM(quantity) as total_qty'),
                         DB::raw('SUM(line_total) as total_spent'),
                         DB::raw('COUNT(DISTINCT sale_id) as purchase_count')
                     )

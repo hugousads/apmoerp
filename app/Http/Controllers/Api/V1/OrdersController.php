@@ -22,7 +22,7 @@ class OrdersController extends BaseApiController
         $store = $this->getStore($request);
 
         $validated = $request->validate([
-            'sort_by' => 'sometimes|string|in:created_at,id,status,total',
+            'sort_by' => 'sometimes|string|in:created_at,id,status,total_amount',
             'sort_dir' => 'sometimes|string|in:asc,desc',
         ]);
 
@@ -181,11 +181,10 @@ class OrdersController extends BaseApiController
 
                     $itemsData[] = [
                         'product_id' => $product->id,
-                        'branch_id' => $branchId,
-                        'qty' => $item['quantity'],
+                        'quantity' => $item['quantity'],
                         'unit_price' => $item['price'],
-                        'discount' => $lineDiscount,
-                        'tax_rate' => 0,
+                        'discount_amount' => $lineDiscount,
+                        'tax_percent' => 0,
                         'line_total' => $lineTotal,
                     ];
                 }
@@ -313,7 +312,7 @@ class OrdersController extends BaseApiController
         if ($preferredId !== null && $branchId !== null) {
             $warehouse = Warehouse::where('id', $preferredId)
                 ->where('branch_id', $branchId)
-                ->where('status', 'active')
+                ->where('is_active', true)
                 ->first();
 
             if ($warehouse) {
@@ -331,7 +330,7 @@ class OrdersController extends BaseApiController
         if ($defaultWarehouseId !== null && $branchId !== null) {
             $defaultWarehouse = Warehouse::where('id', $defaultWarehouseId)
                 ->where('branch_id', $branchId)
-                ->where('status', 'active')
+                ->where('is_active', true)
                 ->first();
 
             if ($defaultWarehouse) {
@@ -342,7 +341,7 @@ class OrdersController extends BaseApiController
         // Fall back to any active warehouse in the branch
         if ($branchId !== null) {
             $branchWarehouse = Warehouse::where('branch_id', $branchId)
-                ->where('status', 'active')
+                ->where('is_active', true)
                 ->first();
 
             if ($branchWarehouse) {
