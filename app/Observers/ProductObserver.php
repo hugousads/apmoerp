@@ -57,12 +57,9 @@ class ProductObserver
 
     public function deleted(Product $product): void
     {
-        // NEW-HIGH-05 FIX: Only delete media files on force delete, not soft delete
+        // NEW-HIGH-05 FIX: Do NOT delete media files on soft delete
+        // Media deletion is handled in forceDeleted() event only
         // This allows products to be restored without losing their images
-        if ($product->isForceDeleting()) {
-            $this->deleteMediaFiles($product);
-        }
-
         $this->audit('deleted', $product);
     }
 

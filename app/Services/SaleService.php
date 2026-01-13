@@ -84,20 +84,18 @@ class SaleService implements SaleServiceInterface
 
                     // Create return note with correct column name (total_amount)
                     // NEW-MEDIUM-10 FIX: Use database locking to prevent reference_number race condition
-                    $referenceNumber = \Illuminate\Support\Facades\DB::transaction(function () {
-                        $today = today()->toDateString();
-                        $lastNote = ReturnNote::whereDate('created_at', $today)
-                            ->lockForUpdate()
-                            ->orderBy('reference_number', 'desc')
-                            ->first();
+                    $today = today()->toDateString();
+                    $lastNote = ReturnNote::whereDate('created_at', $today)
+                        ->lockForUpdate()
+                        ->orderBy('reference_number', 'desc')
+                        ->first();
 
-                        $seq = 1;
-                        if ($lastNote && preg_match('/-(\d+)$/', $lastNote->reference_number, $m)) {
-                            $seq = ((int) $m[1]) + 1;
-                        }
+                    $seq = 1;
+                    if ($lastNote && preg_match('/-(\d+)$/', $lastNote->reference_number, $m)) {
+                        $seq = ((int) $m[1]) + 1;
+                    }
 
-                        return 'RET-'.date('Ymd').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
-                    });
+                    $referenceNumber = 'RET-'.date('Ymd').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
 
                     $note = ReturnNote::create([
                         'branch_id' => $sale->branch_id,
