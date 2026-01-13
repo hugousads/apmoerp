@@ -25,8 +25,13 @@ class BankingService
 
             $transaction = BankTransaction::create($data);
 
-            // Update bank account balance using signed amount
-            $bankAccount->current_balance += $transaction->getSignedAmount();
+            // V7-MEDIUM-N08 FIX: Use bcmath for precise decimal arithmetic
+            // Float arithmetic on decimal-casted fields causes precision loss
+            $signedAmount = (string) $transaction->getSignedAmount();
+            $currentBalance = (string) $bankAccount->current_balance;
+            $newBalance = bcadd($currentBalance, $signedAmount, 4);
+            
+            $bankAccount->current_balance = (float) $newBalance;
             $transaction->balance_after = $bankAccount->current_balance;
             $transaction->save();
 
