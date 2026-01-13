@@ -376,11 +376,11 @@ if (! function_exists('bcround')) {
      * Round a string number using bcmath with proper half-up rounding.
      * V7-MEDIUM-U10 FIX: Implement proper rounding instead of truncation.
      *
-     * @param string $value The value to round
+     * @param string|null $value The value to round
      * @param int $precision Number of decimal places
      * @return string Rounded value
      */
-    function bcround(string $value, int $precision = 2): string
+    function bcround(?string $value, int $precision = 2): string
     {
         // Handle empty/null values
         if ($value === '' || $value === null) {

@@ -345,11 +345,8 @@ class AccountingService
         foreach ($entry->lines as $line) {
             $account = $accounts->get($line->account_id);
             if (! $account) {
-                Log::error('Account not found during auto-post', [
-                    'entry_id' => $entry->id,
-                    'account_id' => $line->account_id,
-                ]);
-                continue; // Skip missing accounts rather than failing entire entry
+                // V7-CRITICAL-N01 FIX: Throw exception for missing accounts - data integrity issue
+                throw new Exception("Account ID {$line->account_id} not found during auto-post. Data integrity issue detected.");
             }
 
             $netChange = $line->debit - $line->credit;

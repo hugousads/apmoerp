@@ -27,12 +27,14 @@ class BankingService
 
             // V7-MEDIUM-N08 FIX: Use bcmath for precise decimal arithmetic
             // Float arithmetic on decimal-casted fields causes precision loss
+            // Keep as string for Laravel's decimal cast to handle properly
             $signedAmount = (string) $transaction->getSignedAmount();
             $currentBalance = (string) $bankAccount->current_balance;
             $newBalance = bcadd($currentBalance, $signedAmount, 4);
             
-            $bankAccount->current_balance = (float) $newBalance;
-            $transaction->balance_after = $bankAccount->current_balance;
+            // Assign string value - Laravel's decimal:4 cast handles conversion properly
+            $bankAccount->current_balance = $newBalance;
+            $transaction->balance_after = $newBalance;
             $transaction->save();
 
             $bankAccount->save();
