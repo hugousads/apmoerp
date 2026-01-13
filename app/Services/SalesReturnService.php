@@ -180,9 +180,10 @@ class SalesReturnService
     public function processRefund(int $returnId, array $refundData): ReturnRefund
     {
         // Input validation
+        // V6-CRITICAL-07 FIX: Require amount > 0 for refund processing
         $validated = validator($refundData, [
             'method' => 'nullable|in:cash,bank_transfer,credit_card,store_credit,original',
-            'amount' => 'nullable|numeric|min:0',
+            'amount' => 'nullable|numeric|gt:0',
             'reference_number' => 'nullable|string|max:100',
             'transaction_id' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
@@ -193,13 +194,29 @@ class SalesReturnService
 
         return $this->handleServiceOperation(
             callback: fn() => DB::transaction(function () use ($returnId, $validated) {
-                $return = SalesReturn::with(['creditNotes', 'customer'])->findOrFail($returnId);
+                $return = SalesReturn::with(['creditNotes', 'customer', 'refunds'])->findOrFail($returnId);
                 $userId = auth()->id();
 
                 abort_if(
                     !$return->canBeProcessed(),
                     422,
                     "Return {$return->return_number} cannot be processed in {$return->status} status"
+                );
+
+                // V6-CRITICAL-07 FIX: Validate refund amount doesn't exceed approved refund_amount
+                $requestedAmount = (float) ($validated['amount'] ?? $return->refund_amount);
+                
+                // Calculate already refunded amount from existing completed refunds
+                $alreadyRefunded = $return->refunds
+                    ->where('status', ReturnRefund::STATUS_COMPLETED)
+                    ->sum('amount');
+                
+                $remainingRefundable = (float) $return->refund_amount - (float) $alreadyRefunded;
+                
+                abort_if(
+                    $requestedAmount > $remainingRefundable,
+                    422,
+                    "Refund amount ({$requestedAmount}) exceeds remaining refundable amount ({$remainingRefundable})"
                 );
 
                 // Create refund record
@@ -389,27 +406,51 @@ class SalesReturnService
     protected function createRefundAccountingEntry(SalesReturn $return, ReturnRefund $refund): void
     {
         try {
+            // V6-CRITICAL-07 FIX: Use correct payload keys and get real account IDs
+            // Get account mappings for sales returns
+            $salesReturnsAccount = \App\Models\AccountMapping::getAccount('sales', 'sales_returns', $return->branch_id);
+            
+            // Determine the refund destination account based on method
+            $refundAccount = match ($refund->refund_method ?? 'cash') {
+                'cash' => \App\Models\AccountMapping::getAccount('sales', 'cash_account', $return->branch_id),
+                'bank_transfer', 'credit_card' => \App\Models\AccountMapping::getAccount('sales', 'bank_account', $return->branch_id),
+                'store_credit' => \App\Models\AccountMapping::getAccount('sales', 'customer_credits', $return->branch_id),
+                default => \App\Models\AccountMapping::getAccount('sales', 'accounts_receivable', $return->branch_id),
+            };
+            
+            // Skip if accounts are not configured
+            if (! $salesReturnsAccount || ! $refundAccount) {
+                Log::warning('Cannot create refund accounting entry - accounts not configured', [
+                    'return_id' => $return->id,
+                    'refund_id' => $refund->id,
+                    'has_sales_returns_account' => (bool) $salesReturnsAccount,
+                    'has_refund_account' => (bool) $refundAccount,
+                ]);
+                return;
+            }
+            
             // Create journal entry for the refund
-            // This would integrate with your accounting system
             // Typical entries:
             // DR: Sales Returns and Allowances (increase)
             // CR: Cash/Bank/Accounts Receivable (decrease)
             
             $this->accountingService->createJournalEntry([
                 'branch_id' => $return->branch_id,
-                'date' => now()->toDateString(),
+                'entry_date' => now()->toDateString(),
                 'reference' => $return->return_number,
                 'description' => "Sales return refund - {$return->return_number}",
-                'type' => 'sales_return',
-                'lines' => [
+                'source_module' => 'sales_return',
+                'source_type' => 'SalesReturn',
+                'source_id' => $return->id,
+                'items' => [
                     [
-                        'account_id' => null, // Would be sales returns account
+                        'account_id' => $salesReturnsAccount->id,
                         'debit' => $refund->amount,
                         'credit' => 0,
                         'description' => 'Sales return',
                     ],
                     [
-                        'account_id' => null, // Would be cash/bank account
+                        'account_id' => $refundAccount->id,
                         'debit' => 0,
                         'credit' => $refund->amount,
                         'description' => 'Refund payment',

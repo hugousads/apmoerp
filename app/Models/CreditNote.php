@@ -82,6 +82,7 @@ class CreditNote extends Model
 
     /**
      * Generate unique credit note number
+     * V6-CRITICAL-08 FIX: Use database locking to prevent race conditions
      */
     public static function generateCreditNoteNumber(?int $branchId = null): string
     {
@@ -89,7 +90,9 @@ class CreditNote extends Model
         $branchCode = $branchId ? str_pad($branchId, 3, '0', STR_PAD_LEFT) : '000';
         $date = now()->format('Ymd');
         
+        // Use lockForUpdate to prevent race conditions during concurrent creation
         $lastCN = static::where('credit_note_number', 'like', "{$prefix}-{$branchCode}-{$date}-%")
+            ->lockForUpdate()
             ->orderBy('credit_note_number', 'desc')
             ->first();
 

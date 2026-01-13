@@ -86,6 +86,7 @@ class DebitNote extends Model
 
     /**
      * Generate unique debit note number
+     * V6-CRITICAL-08 FIX: Use database locking to prevent race conditions
      */
     public static function generateDebitNoteNumber(?int $branchId = null): string
     {
@@ -93,8 +94,10 @@ class DebitNote extends Model
         $branchCode = $branchId ? str_pad($branchId, 3, '0', STR_PAD_LEFT) : '000';
         $date = now()->format('Ymd');
         
-        $lastNote = static::whereDate('created_at', now()->toDateString())
-            ->orderByDesc('id')
+        // Use lockForUpdate to prevent race conditions during concurrent creation
+        $lastNote = static::where('debit_note_number', 'like', "{$prefix}-{$branchCode}-{$date}-%")
+            ->lockForUpdate()
+            ->orderByDesc('debit_note_number')
             ->first();
         
         $sequence = $lastNote ? ((int) substr($lastNote->debit_note_number, -4)) + 1 : 1;

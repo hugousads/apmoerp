@@ -39,6 +39,10 @@ class POSService implements POSServiceInterface
                 // Validate branch ID is present
                 abort_if(! $branchId, 422, __('Branch context is required'));
 
+                // V6-CRITICAL-02 FIX: Require warehouse_id for all stock-moving operations
+                $warehouseId = $payload['warehouse_id'] ?? null;
+                abort_if(! $warehouseId, 422, __('Warehouse is required for POS checkout'));
+
                 // Idempotency check: If client_uuid provided and sale exists, return existing sale
                 // FIX U-03: Scope by branch to prevent cross-branch data collision
                 if ($clientUuid) {

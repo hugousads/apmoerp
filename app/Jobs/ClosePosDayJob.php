@@ -25,10 +25,11 @@ class ClosePosDayJob implements ShouldQueue
     {
         $date = $this->date ?: now()->toDateString();
 
-        // Example: summarize POS sales of the day and persist closing record
+        // V6-MEDIUM-02 FIX: Filter only revenue statuses, exclude cancelled/void/returned sales
         $sales = \App\Models\Sale::query()
             ->whereDate('created_at', $date)
             ->when($this->branchId, fn ($q) => $q->where('branch_id', $this->branchId))
+            ->whereNotIn('status', ['cancelled', 'void', 'returned', 'refunded'])
             ->get(['total_amount', 'paid_amount']);
 
         // Use bcmath for precise financial totals

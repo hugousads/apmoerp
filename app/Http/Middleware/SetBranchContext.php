@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Models\Branch;
+use App\Services\BranchContextManager;
 use Closure;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -19,6 +20,8 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * SECURITY FIX: Validates branch_id consistency between session/header and request payload
  * to prevent "context poisoning" attacks in multi-tab browser scenarios.
+ *
+ * V6-HIGH-05 FIX: Verify user has access to the chosen branch
  *
  * Usage alias in routes: 'set.branch'
  */
@@ -73,6 +76,26 @@ class SetBranchContext
 
         if (method_exists($branch, 'isActive') && ! $branch->isActive()) {
             return $this->error('Branch is inactive.', 423);
+        }
+
+        // V6-HIGH-05 FIX: Verify user has access to the branch
+        $user = $request->user();
+        if ($user) {
+            // Super admins can access all branches
+            if (! BranchContextManager::isSuperAdmin($user)) {
+                $accessibleBranchIds = BranchContextManager::getAccessibleBranchIds();
+                
+                if (! in_array((int) $branch->getKey(), $accessibleBranchIds, true)) {
+                    return $this->error(
+                        'You do not have access to this branch.',
+                        403,
+                        [
+                            'requested_branch_id' => (int) $branch->getKey(),
+                            'suggestion' => 'Please contact your administrator if you need access to this branch.',
+                        ]
+                    );
+                }
+            }
         }
 
         // set into request + container

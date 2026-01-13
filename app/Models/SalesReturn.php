@@ -73,6 +73,7 @@ class SalesReturn extends Model
 
     /**
      * Generate unique return number
+     * V6-CRITICAL-08 FIX: Use database locking to prevent race conditions
      */
     public static function generateReturnNumber(?int $branchId = null): string
     {
@@ -80,7 +81,9 @@ class SalesReturn extends Model
         $branchCode = $branchId ? str_pad($branchId, 3, '0', STR_PAD_LEFT) : '000';
         $date = now()->format('Ymd');
         
+        // Use lockForUpdate to prevent race conditions during concurrent creation
         $lastReturn = static::where('return_number', 'like', "{$prefix}-{$branchCode}-{$date}-%")
+            ->lockForUpdate()
             ->orderBy('return_number', 'desc')
             ->first();
 

@@ -46,9 +46,15 @@ class PurchaseService implements PurchaseServiceInterface
                     $branchId = (int) $payload['branch_id'];
                 }
 
+                // V6-CRITICAL-02 FIX: Require warehouse_id for all stock-moving operations
+                if (! isset($payload['warehouse_id']) || $payload['warehouse_id'] === null) {
+                    throw new \InvalidArgumentException('Warehouse is required for purchase operations.');
+                }
+                $warehouseId = (int) $payload['warehouse_id'];
+
                 $p = Purchase::create([
                     'branch_id' => $branchId,
-                    'warehouse_id' => $payload['warehouse_id'] ?? null,
+                    'warehouse_id' => $warehouseId,
                     'supplier_id' => $payload['supplier_id'] ?? null,
                     'status' => 'draft',
                     'purchase_date' => now()->toDateString(),
