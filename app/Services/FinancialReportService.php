@@ -279,22 +279,27 @@ class FinancialReportService
 
         $sales = $query->with(['customer', 'payments'])->get();
 
+        // Pre-fetch all completed refunds for these sales to avoid N+1 queries
+        $saleIds = $sales->pluck('id')->toArray();
+        $refundsBySale = \App\Models\ReturnRefund::whereHas('returnNote', function ($q) use ($saleIds) {
+            $q->whereIn('sale_id', $saleIds);
+        })
+            ->where('status', \App\Models\ReturnRefund::STATUS_COMPLETED)
+            ->get()
+            ->groupBy(fn ($refund) => $refund->returnNote?->sale_id)
+            ->map(fn ($group) => $group->sum('amount'));
+
         $aging = [];
 
         foreach ($sales as $sale) {
             // STILL-V8-HIGH-N06 FIX: Calculate paid amount from SalePayment ledger
-            // Only count completed/posted payments
-            $totalPaid = $sale->payments()
+            // Only count completed/posted payments (already eager loaded)
+            $totalPaid = $sale->payments
                 ->whereIn('status', ['completed', 'posted', 'paid'])
                 ->sum('amount');
 
-            // STILL-V8-HIGH-N06 FIX: Subtract completed refunds from outstanding
-            // Get refunds associated with return notes for this sale
-            $totalRefunded = \App\Models\ReturnRefund::whereHas('returnNote', function ($q) use ($sale) {
-                $q->where('sale_id', $sale->getKey());
-            })
-                ->where('status', \App\Models\ReturnRefund::STATUS_COMPLETED)
-                ->sum('amount');
+            // STILL-V8-HIGH-N06 FIX: Get refund total from pre-fetched data
+            $totalRefunded = $refundsBySale->get($sale->getKey(), 0);
 
             // Calculate true outstanding: total - payments + refunds (refunds reduce what was paid)
             $outstandingAmount = (float) $sale->total_amount - (float) $totalPaid + (float) $totalRefunded;
@@ -360,8 +365,8 @@ class FinancialReportService
 
         foreach ($purchases as $purchase) {
             // STILL-V8-HIGH-N06 FIX: Calculate paid amount from PurchasePayment ledger
-            // Only count completed/posted payments
-            $totalPaid = $purchase->payments()
+            // Only count completed/posted payments (already eager loaded)
+            $totalPaid = $purchase->payments
                 ->whereIn('status', ['completed', 'posted', 'paid'])
                 ->sum('amount');
 

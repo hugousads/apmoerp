@@ -286,31 +286,38 @@ class ProductsController extends BaseApiController
         }
 
         // V9-CRITICAL-01 FIX: When quantity is updated, create a stock adjustment movement
+        // Note: If warehouse_id is not provided, we can only update the cached stock_quantity
+        // A stock movement requires a warehouse_id. This is acceptable as stock_quantity serves as
+        // a fallback cache when stock_movements isn't fully utilized.
         $warehouseId = $validated['warehouse_id'] ?? null;
         if (array_key_exists('quantity', $validated)) {
             $newQuantity = (float) $validated['quantity'];
-            $currentStock = \App\Services\StockService::getCurrentStock($product->id, $warehouseId);
-            $quantityDiff = $newQuantity - $currentStock;
 
             // Update cached stock_quantity
             $product->stock_quantity = $newQuantity;
             unset($validated['quantity']);
 
-            // Create stock adjustment movement if there's a difference and warehouse is specified
-            if (abs($quantityDiff) > 0.0001 && $warehouseId) {
-                $stockMovementRepo = app(\App\Repositories\Contracts\StockMovementRepositoryInterface::class);
-                $stockMovementRepo->create([
-                    'warehouse_id' => $warehouseId,
-                    'product_id' => $product->id,
-                    'movement_type' => 'adjustment',
-                    'reference_type' => 'product_update',
-                    'reference_id' => $product->id,
-                    'qty' => abs($quantityDiff),
-                    'direction' => $quantityDiff > 0 ? 'in' : 'out',
-                    'unit_cost' => $product->cost ?? null,
-                    'notes' => 'Stock adjustment via API product update',
-                    'created_by' => auth()->id(),
-                ]);
+            // Create stock adjustment movement if warehouse is specified
+            if ($warehouseId) {
+                $currentStock = \App\Services\StockService::getCurrentStock($product->id, $warehouseId);
+                $quantityDiff = $newQuantity - $currentStock;
+
+                // Only create movement if there's a meaningful difference
+                if (abs($quantityDiff) > 0.0001) {
+                    $stockMovementRepo = app(\App\Repositories\Contracts\StockMovementRepositoryInterface::class);
+                    $stockMovementRepo->create([
+                        'warehouse_id' => $warehouseId,
+                        'product_id' => $product->id,
+                        'movement_type' => 'adjustment',
+                        'reference_type' => 'product_update',
+                        'reference_id' => $product->id,
+                        'qty' => abs($quantityDiff),
+                        'direction' => $quantityDiff > 0 ? 'in' : 'out',
+                        'unit_cost' => $product->cost ?? null,
+                        'notes' => 'Stock adjustment via API product update',
+                        'created_by' => auth()->id(),
+                    ]);
+                }
             }
         }
 
