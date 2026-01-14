@@ -91,7 +91,12 @@ class Form extends Component
                     $account = Account::findOrFail($accountId);
                 } else {
                     $account = new Account;
-                    $account->branch_id = $user->branch_id ?? 1;
+                    // NEW-V15-HIGH-02 FIX: Do not default branch_id to 1
+                    // Require explicit branch selection when user has no branch_id
+                    if ($user->branch_id === null) {
+                        throw new \Exception(__('Branch selection is required. Please select a branch in the form.'));
+                    }
+                    $account->branch_id = $user->branch_id;
                     $account->balance = 0.00;
                 }
 

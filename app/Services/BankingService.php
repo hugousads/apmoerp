@@ -31,7 +31,7 @@ class BankingService
             $signedAmount = (string) $transaction->getSignedAmount();
             $currentBalance = (string) $bankAccount->current_balance;
             $newBalance = bcadd($currentBalance, $signedAmount, 4);
-            
+
             // Assign string value - Laravel's decimal:4 cast handles conversion properly
             $bankAccount->current_balance = $newBalance;
             $transaction->balance_after = $newBalance;
@@ -175,10 +175,12 @@ class BankingService
 
         $netCashflow = bcsub($inflows, $outflows, 2);
 
+        // NEW-V15-MEDIUM-01 FIX: Return money as string-decimal to preserve precision
+        // Only cast/format at presentation layer to avoid rounding/precision issues
         return [
-            'total_inflows' => (float) $inflows,
-            'total_outflows' => (float) $outflows,
-            'net_cashflow' => (float) $netCashflow,
+            'total_inflows' => $inflows,
+            'total_outflows' => $outflows,
+            'net_cashflow' => $netCashflow,
             'transaction_count' => $transactions->count(),
         ];
     }

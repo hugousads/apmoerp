@@ -81,6 +81,76 @@ class AuthController extends Controller
         return $this->ok(null, __('Logged out'));
     }
 
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Refresh the authentication token
+     */
+    public function refresh(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return $this->fail(__('Unauthenticated'), 401);
+        }
+
+        // Revoke current token and issue a new one
+        if (method_exists($user, 'currentAccessToken')) {
+            $user->currentAccessToken()?->delete();
+        }
+
+        $abilities = $request->input('abilities', ['*']);
+        $token = $this->auth->issueToken($user, $abilities);
+
+        return $this->ok([
+            'token' => $token->plainTextToken,
+            'user' => $user,
+        ], __('Token refreshed successfully'));
+    }
+
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Change user password
+     */
+    public function changePassword(Request $request)
+    {
+        $validated = $this->validate($request, [
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            return $this->fail(__('Current password is incorrect'), 422);
+        }
+
+        $user->password = Hash::make($validated['new_password']);
+        $user->save();
+
+        return $this->ok(null, __('Password changed successfully'));
+    }
+
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Revoke all other sessions
+     */
+    public function revokeOtherSessions(Request $request)
+    {
+        $validated = $this->validate($request, [
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($validated['password'], $user->password)) {
+            return $this->fail(__('Password is incorrect'), 422);
+        }
+
+        $currentTokenId = $user->currentAccessToken()?->id;
+
+        // Revoke all tokens except the current one
+        $user->tokens()->where('id', '!=', $currentTokenId)->delete();
+
+        return $this->ok(null, __('Other sessions revoked successfully'));
+    }
+
     public function impersonate(Request $request)
     {
         $this->authorize('system.impersonate');

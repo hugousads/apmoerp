@@ -24,6 +24,58 @@ class AttendanceController extends Controller
         return $this->ok($q->paginate($per));
     }
 
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Store a new attendance record
+     */
+    public function store(Request $request)
+    {
+        $validated = $this->validate($request, [
+            'employee_id' => ['required', 'integer', 'exists:employees,id'],
+            'logged_at' => ['required', 'date'],
+            'type' => ['required', 'string', 'in:check_in,check_out'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $attendance = Attendance::create([
+            'employee_id' => $validated['employee_id'],
+            'logged_at' => $validated['logged_at'],
+            'type' => $validated['type'],
+            'notes' => $validated['notes'] ?? null,
+            'status' => 'pending',
+            'created_by' => auth()->id(),
+        ]);
+
+        return $this->ok($attendance, __('Attendance record created'), 201);
+    }
+
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Update an attendance record
+     */
+    public function update(Request $request, Attendance $attendance)
+    {
+        $validated = $this->validate($request, [
+            'logged_at' => ['sometimes', 'date'],
+            'type' => ['sometimes', 'string', 'in:check_in,check_out'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'status' => ['sometimes', 'string', 'in:pending,approved,rejected'],
+        ]);
+
+        $attendance->update($validated);
+
+        return $this->ok($attendance, __('Attendance record updated'));
+    }
+
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Deactivate an attendance record
+     */
+    public function deactivate(Attendance $attendance)
+    {
+        $attendance->status = 'deactivated';
+        $attendance->save();
+
+        return $this->ok($attendance, __('Attendance record deactivated'));
+    }
+
     public function approve(Attendance $record)
     {
         $record->status = 'approved';

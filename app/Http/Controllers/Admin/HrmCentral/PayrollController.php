@@ -24,6 +24,14 @@ class PayrollController extends Controller
         return $this->ok($q->paginate($per));
     }
 
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Show a specific payroll record
+     */
+    public function show(Payroll $payroll)
+    {
+        return $this->ok($payroll->load(['employee']));
+    }
+
     public function run(Request $request)
     {
         $this->validate($request, ['period' => ['required', 'date_format:Y-m']]);
@@ -38,5 +46,21 @@ class PayrollController extends Controller
         $payroll->save();
 
         return $this->ok($payroll, __('Approved'));
+    }
+
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Mark payroll as paid
+     */
+    public function pay(Payroll $payroll)
+    {
+        if ($payroll->status !== 'approved') {
+            return $this->fail(__('Payroll must be approved before payment'), 422);
+        }
+
+        $payroll->status = 'paid';
+        $payroll->paid_at = now();
+        $payroll->save();
+
+        return $this->ok($payroll, __('Payroll marked as paid'));
     }
 }
