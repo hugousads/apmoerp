@@ -150,19 +150,17 @@ class DatabaseCompatibilityService
     public function weekTruncateExpression(string $column): string
     {
         return match ($this->getDriver()) {
-            // PostgreSQL: DATE_TRUNC uses Monday as week start by default (ISO-8601).
-            // Subtract 2 days to shift to Saturday, then truncate, then the result represents
-            // the Monday of that shifted week, which corresponds to Saturday of the original week.
-            // Alternative: cast to date, calculate days since Saturday, subtract.
+            // PostgreSQL: DATE_TRUNC('week', ...) returns Monday (ISO-8601 week start).
+            // To get Saturday: shift date +2 days, truncate to week (Monday), then shift back -2 days.
+            // This maps Monday->Monday, so Saturday+2=Monday->Monday, Monday-2=Saturday.
             'pgsql' => "DATE(DATE_TRUNC('week', {$column}::date + INTERVAL '2 days') - INTERVAL '2 days')",
             // SQLite: strftime('%w', date) returns 0=Sunday, 1=Monday, ..., 6=Saturday.
             // To get the Saturday on or before a date, subtract (dow + 1) % 7 days:
             // Saturday(6)->(6+1)%7=0, Sunday(0)->1, Monday(1)->2, ..., Friday(5)->6
             'sqlite' => "DATE({$column}, '-' || ((CAST(strftime('%w', {$column}) AS INTEGER) + 1) % 7) || ' days')",
             // MySQL/MariaDB: WEEKDAY() returns 0=Monday, 1=Tuesday, ..., 5=Saturday, 6=Sunday.
-            // To get Saturday: we need to subtract (WEEKDAY + 2) % 7 days.
-            // Saturday (5) -> subtract 0, Sunday (6) -> subtract 1, Monday (0) -> subtract 2,
-            // Tuesday (1) -> subtract 3, Wednesday (2) -> subtract 4, Thursday (3) -> subtract 5, Friday (4) -> subtract 6
+            // To get Saturday: subtract (WEEKDAY + 2) % 7 days.
+            // Saturday(5)->0, Sunday(6)->1, Monday(0)->2, ..., Friday(4)->6
             default => "DATE(DATE_SUB({$column}, INTERVAL MOD(WEEKDAY({$column}) + 2, 7) DAY))",
         };
     }

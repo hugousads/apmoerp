@@ -6,6 +6,7 @@ namespace App\Repositories;
 
 use App\Models\StockMovement;
 use App\Repositories\Contracts\StockMovementRepositoryInterface;
+use DomainException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -149,7 +150,7 @@ final class StockMovementRepository extends EloquentBaseRepository implements St
                 ->first();
 
             if ($warehouse === null) {
-                throw new \DomainException("Invalid warehouse_id: {$data['warehouse_id']}");
+                throw new DomainException("Invalid warehouse_id: {$data['warehouse_id']}");
             }
 
             // Then also lock any existing stock movement rows for this product+warehouse
