@@ -98,8 +98,16 @@ class Form extends Component
 
         $user = auth()->user();
 
+        // NEW-V15-HIGH-02 FIX: Do not default branch_id to 1
+        // Require explicit branch selection when user has no branch_id
+        if ($user->branch_id === null) {
+            $this->addError('branch_id', __('Branch selection is required. Please select a branch.'));
+
+            return null;
+        }
+
         $data = [
-            'branch_id' => $user->branch_id ?? 1,
+            'branch_id' => $user->branch_id,
             'from_warehouse_id' => $this->fromWarehouseId,
             'to_warehouse_id' => $this->toWarehouseId,
             'status' => $this->status,

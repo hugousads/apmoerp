@@ -174,7 +174,12 @@ class Form extends Component
                         $entry->lines()->delete();
                     } else {
                         $entry = new JournalEntry;
-                        $entry->branch_id = $user->branch_id ?? 1;
+                        // NEW-V15-HIGH-02 FIX: Do not default branch_id to 1
+                        // Require explicit branch selection when user has no branch_id
+                        if ($user->branch_id === null) {
+                            throw new \Exception(__('Branch selection is required. Please select a branch in the form.'));
+                        }
+                        $entry->branch_id = $user->branch_id;
                         $entry->created_by = $user->id;
                     }
 

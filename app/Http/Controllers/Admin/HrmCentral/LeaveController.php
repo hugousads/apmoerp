@@ -24,6 +24,36 @@ class LeaveController extends Controller
         return $this->ok($q->paginate($per));
     }
 
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Approve a leave request
+     */
+    public function approve(LeaveRequest $leave)
+    {
+        $leave->status = 'approved';
+        $leave->approved_at = now();
+        $leave->approved_by = auth()->id();
+        $leave->save();
+
+        return $this->ok($leave, __('Leave request approved'));
+    }
+
+    /**
+     * NEW-V15-CRITICAL-02 FIX: Reject a leave request
+     */
+    public function reject(Request $request, LeaveRequest $leave)
+    {
+        $validated = $this->validate($request, [
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $leave->status = 'rejected';
+        $leave->rejection_reason = $validated['reason'] ?? null;
+        $leave->rejected_by = auth()->id();
+        $leave->save();
+
+        return $this->ok($leave, __('Leave request rejected'));
+    }
+
     public function updateStatus(Request $request, LeaveRequest $leave)
     {
         $data = $this->validate($request, ['status' => ['required', 'in:pending,approved,rejected']]);

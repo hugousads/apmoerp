@@ -81,17 +81,25 @@ class ReportsController extends Controller
         $b = (int) $request->attributes->get('branch_id');
         $from = $request->input('from', now()->startOfMonth()->toDateString());
         $to = $request->input('to', now()->endOfMonth()->toDateString());
-        $in = DB::table('sales')
-            ->where('branch_id', $b)
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
-            ->sum('paid_amount');
-        $out = DB::table('purchases')
-            ->where('branch_id', $b)
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
-            ->sum('paid_amount');
 
-        return $this->ok(['period' => [$from, $to], 'inflow' => round($in, 2), 'outflow' => round($out, 2), 'net' => round($in - $out, 2)]);
+        // STILL-V14-HIGH-01 FIX: Compute cashflow from bank transactions instead of sales/purchases paid_amount
+        // This provides accurate cashflow including refunds, bank fees, journals, adjustments, opening balances, transfers, partial payments, etc.
+        $inflows = DB::table('bank_transactions')
+            ->where('branch_id', $b)
+            ->whereDate('transaction_date', '>=', $from)
+            ->whereDate('transaction_date', '<=', $to)
+            ->where('type', 'deposit')
+            ->where('status', '!=', 'cancelled')
+            ->sum('amount');
+
+        $outflows = DB::table('bank_transactions')
+            ->where('branch_id', $b)
+            ->whereDate('transaction_date', '>=', $from)
+            ->whereDate('transaction_date', '<=', $to)
+            ->where('type', 'withdrawal')
+            ->where('status', '!=', 'cancelled')
+            ->sum('amount');
+
+        return $this->ok(['period' => [$from, $to], 'inflow' => round($inflows, 2), 'outflow' => round($outflows, 2), 'net' => round($inflows - $outflows, 2)]);
     }
 }
