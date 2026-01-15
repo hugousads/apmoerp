@@ -61,21 +61,22 @@ class Form extends Component
 
         // If editing an existing income, use its branch
         if ($income && $income->exists && $income->branch_id) {
-            return $income->branch_id;
+            return (int) $income->branch_id;
+        }
+
+        if (! $user) {
+            return null;
         }
 
         // Check direct branch_id assignment
-        if ($user?->branch_id) {
+        if ($user->branch_id) {
             return (int) $user->branch_id;
         }
 
         // Fallback to first branch from pivot relationship
-        $firstBranch = $user?->branches()->first();
-        if ($firstBranch) {
-            return (int) $firstBranch->id;
-        }
+        $firstBranch = $user->branches()->first();
 
-        return null;
+        return $firstBranch ? (int) $firstBranch->id : null;
     }
 
     public function mount(?Income $income = null): void

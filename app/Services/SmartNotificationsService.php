@@ -294,7 +294,7 @@ class SmartNotificationsService
         if ($branchId) {
             $query->where(function ($q) use ($branchId) {
                 $q->where('branch_id', $branchId)
-                    ->orWhereHas('branches', fn ($bq) => $bq->where('branches.id', $branchId));
+                    ->orWhereRelation('branches', 'branches.id', $branchId);
             });
         }
 
