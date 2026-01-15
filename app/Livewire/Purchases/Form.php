@@ -349,7 +349,7 @@ class Form extends Component
                             // The UI allows entering a discount amount, which needs to be converted to percentage
                             $lineSubtotal = $item['qty'] * $item['unit_cost'];
                             $discountAmount = max(0, (float) ($item['discount'] ?? 0));
-                            
+
                             // Calculate discount_percent from the discount amount (if lineSubtotal > 0)
                             $discountPercent = 0;
                             if ($lineSubtotal > 0 && $discountAmount > 0) {
@@ -357,7 +357,7 @@ class Form extends Component
                                 $discountAmount = min($discountAmount, $lineSubtotal);
                                 $discountPercent = ($discountAmount / $lineSubtotal) * 100;
                             }
-                            
+
                             $lineAfterDiscount = $lineSubtotal - $discountAmount;
                             $taxAmount = $lineAfterDiscount * (($item['tax_rate'] ?? 0) / 100);
                             $lineTotal = $lineAfterDiscount + $taxAmount;

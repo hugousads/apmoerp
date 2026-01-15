@@ -309,7 +309,7 @@ class OrdersController extends BaseApiController
             // (completed, posted, paid) instead of hardcoding only 'completed'
             // This ensures consistency with the Sale model's payment status logic
             $totalPaid = $order->total_paid;
-            
+
             $order->payment_status = $totalPaid >= $order->total_amount
                 ? 'paid'
                 : ($totalPaid > 0 ? 'partial' : 'unpaid');

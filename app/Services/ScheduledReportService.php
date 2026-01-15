@@ -324,7 +324,7 @@ class ScheduledReportService
 
         // Use Dompdf to generate actual PDF content
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-        
+
         return $pdf->output();
     }
 
@@ -380,7 +380,7 @@ class ScheduledReportService
      */
     protected function generateExcel(array $data): string
     {
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         if (empty($data)) {
@@ -402,7 +402,7 @@ class ScheduledReportService
                     'startColor' => ['rgb' => '10b981'],
                 ],
             ];
-            $sheet->getStyle('A1:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers)) . '1')
+            $sheet->getStyle('A1:'.\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers)).'1')
                 ->applyFromArray($headerStyle);
 
             // Write data rows
@@ -424,7 +424,7 @@ class ScheduledReportService
 
         // Generate XLSX content
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        
+
         ob_start();
         $writer->save('php://output');
         $content = ob_get_clean();

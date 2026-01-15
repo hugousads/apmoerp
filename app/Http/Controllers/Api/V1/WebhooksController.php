@@ -264,19 +264,20 @@ class WebhooksController extends BaseApiController
             if ($mapping && $mapping->product) {
                 $inventoryService = app(\App\Services\Contracts\InventoryServiceInterface::class);
                 request()->attributes->set('branch_id', $store->branch_id);
-                
+
                 // V22-CRIT-02 FIX: Get the default warehouse for the store's branch
                 $warehouseId = $this->getDefaultWarehouseForBranch($store->branch_id);
-                
+
                 if (! $warehouseId) {
                     Log::warning('Laravel inventory update skipped: no default warehouse for branch', [
                         'store_id' => $store->id,
                         'branch_id' => $store->branch_id,
                         'product_id' => $mapping->product->id,
                     ]);
+
                     return;
                 }
-                
+
                 $currentQty = $inventoryService->currentQty($mapping->product->id, $warehouseId);
                 $difference = $quantity - $currentQty;
 

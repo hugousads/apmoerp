@@ -56,18 +56,18 @@ class SaleService implements SaleServiceInterface
                     // V22-HIGH-07 FIX: Calculate previously returned quantities per sale_item
                     // This prevents over-returning items across multiple return requests
                     $previouslyReturned = $this->getPreviouslyReturnedQuantities($sale->getKey());
-                    
+
                     // Calculate refund amount first
                     $refund = '0.00';
                     $processedItems = [];
-                    
+
                     foreach ($items as $it) {
                         // V22-HIGH-07 FIX: Support both sale_item_id and product_id for backwards compatibility
                         // sale_item_id is preferred as it correctly identifies the specific line item
                         $saleItemId = $it['sale_item_id'] ?? null;
                         $productId = $it['product_id'] ?? null;
                         $requestedQty = (float) ($it['qty'] ?? 0);
-                        
+
                         // Validate required fields
                         if ((! $saleItemId && ! $productId) || $requestedQty <= 0) {
                             continue;
@@ -89,18 +89,18 @@ class SaleService implements SaleServiceInterface
                                 ->filter(fn ($item) => $item->product_id == $productId && ! in_array($item->id, $processedItems))
                                 ->first();
                         }
-                        
+
                         if (! $si) {
                             continue;
                         }
-                        
+
                         // Mark this item as processed
                         $processedItems[] = $si->id;
-                        
+
                         // V22-HIGH-07 FIX: Calculate available quantity considering previous returns
                         $alreadyReturned = $previouslyReturned[$si->id] ?? 0.0;
                         $availableToReturn = max(0, (float) $si->quantity - $alreadyReturned);
-                        
+
                         // Cap at available quantity
                         $qty = min($requestedQty, $availableToReturn);
 
@@ -172,7 +172,7 @@ class SaleService implements SaleServiceInterface
                     // Check if all items have been fully returned
                     $totalOriginalQty = $sale->items->sum('quantity');
                     $totalReturnedQty = array_sum($previouslyReturned) + bccomp($refund, '0.00', 2) > 0 ? collect($items)->sum('qty') : 0;
-                    
+
                     // For simplicity, mark as returned when any return is processed
                     // A more sophisticated solution would track partial returns
                     $sale->status = 'returned';
@@ -205,7 +205,7 @@ class SaleService implements SaleServiceInterface
         // In a full implementation, this would query a return_note_items table
         // For now, we check stock movements with reference_type = 'return' and reference to sale items
         $saleItemIds = \App\Models\SaleItem::where('sale_id', $saleId)->pluck('id');
-        
+
         $returned = [];
         foreach ($saleItemIds as $itemId) {
             // Check for return-related stock movements for this sale item
@@ -214,10 +214,10 @@ class SaleService implements SaleServiceInterface
                 ->where('reference_id', $itemId)
                 ->where('direction', 'in')  // Returns add stock back
                 ->sum('qty');
-            
+
             $returned[$itemId] = (float) $returnedQty;
         }
-        
+
         return $returned;
     }
 

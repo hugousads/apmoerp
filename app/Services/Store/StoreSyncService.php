@@ -227,20 +227,21 @@ class StoreSyncService
             if ($mapping && $mapping->product) {
                 // Use inventory service to adjust stock instead of direct update
                 request()->attributes->set('branch_id', $store->branch_id);
-                
+
                 // V22-CRIT-02 FIX: Get the default warehouse for the store's branch
                 // Inventory adjustments require a warehouse ID
                 $warehouseId = $this->getDefaultWarehouseForBranch($store->branch_id);
-                
+
                 if (! $warehouseId) {
                     Log::warning('Shopify inventory update skipped: no default warehouse for branch', [
                         'store_id' => $store->id,
                         'branch_id' => $store->branch_id,
                         'product_id' => $mapping->product->id,
                     ]);
+
                     return;
                 }
-                
+
                 $currentQty = $this->inventory->currentQty($mapping->product->id, $warehouseId);
                 $difference = $available - $currentQty;
 

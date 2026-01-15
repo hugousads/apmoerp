@@ -291,11 +291,12 @@ class Form extends Component
             $qty = (string) ($item['qty'] ?? 0);
             $price = (string) ($item['unit_price'] ?? 0);
             $discount = (string) ($item['discount'] ?? 0);
-            
+
             $lineSubtotal = bcmul($qty, $price, BCMATH_CALCULATION_SCALE);
             $lineAfterDiscount = bcsub($lineSubtotal, $discount, BCMATH_CALCULATION_SCALE);
             $total = bcadd($total, $lineAfterDiscount, BCMATH_CALCULATION_SCALE);
         }
+
         return (float) bcdiv($total, '1', BCMATH_STORAGE_SCALE);
     }
 
@@ -310,13 +311,14 @@ class Form extends Component
             $price = (string) ($item['unit_price'] ?? 0);
             $discount = (string) ($item['discount'] ?? 0);
             $taxRate = (string) ($item['tax_rate'] ?? 0);
-            
+
             $lineSubtotal = bcmul($qty, $price, BCMATH_CALCULATION_SCALE);
             $lineAfterDiscount = bcsub($lineSubtotal, $discount, BCMATH_CALCULATION_SCALE);
             $taxRateDecimal = bcdiv($taxRate, '100', BCMATH_TAX_RATE_SCALE);
             $taxAmount = bcmul($lineAfterDiscount, $taxRateDecimal, BCMATH_CALCULATION_SCALE);
             $total = bcadd($total, $taxAmount, BCMATH_CALCULATION_SCALE);
         }
+
         return (float) bcdiv($total, '1', BCMATH_STORAGE_SCALE);
     }
 
@@ -329,12 +331,12 @@ class Form extends Component
         $taxTotal = (string) $this->taxTotal;
         $discountTotal = (string) $this->discount_total;
         $shippingTotal = (string) $this->shipping_total;
-        
+
         // grandTotal = subTotal + taxTotal - discount_total + shipping_total
         $result = bcadd($subTotal, $taxTotal, BCMATH_CALCULATION_SCALE);
         $result = bcsub($result, $discountTotal, BCMATH_CALCULATION_SCALE);
         $result = bcadd($result, $shippingTotal, BCMATH_CALCULATION_SCALE);
-        
+
         return (float) bcdiv($result, '1', BCMATH_STORAGE_SCALE);
     }
 

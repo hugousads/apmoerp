@@ -177,7 +177,7 @@ trait HasBranch
             if ($user->relationLoaded('branches')) {
                 return $user->branches->contains('id', $this->branch_id);
             }
-            
+
             // Otherwise, query the pivot table directly to avoid loading all branches
             return $user->branches()->where('branches.id', $this->branch_id)->exists();
         }
