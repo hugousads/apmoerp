@@ -144,7 +144,7 @@ class Customer extends BaseModel
     {
         return $query->where(function ($q) {
             $q->whereNull('credit_limit')
-              ->orWhereRaw('balance <= credit_limit');
+                ->orWhereRaw('balance <= credit_limit');
         });
     }
 

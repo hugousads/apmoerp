@@ -84,7 +84,7 @@ class HRMService implements HRMServiceInterface
         return $this->handleServiceOperation(
             callback: function () use ($period) {
                 // CRIT-05 FIX: Parse period (Y-m) into year and month
-                $periodDate = \Carbon\Carbon::createFromFormat('Y-m', $period);
+                $periodDate = Carbon::createFromFormat('Y-m', $period);
                 if (! $periodDate) {
                     throw new \InvalidArgumentException("Invalid period format. Expected Y-m, got: {$period}");
                 }

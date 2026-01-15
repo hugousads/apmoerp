@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\Sale;
+use App\Notifications\PaymentReminderNotification;
 use App\Services\AutomatedAlertService;
 use Illuminate\Console\Command;
 
@@ -83,9 +85,10 @@ class SendPaymentRemindersCommand extends Command
             try {
                 // HIGH-03 FIX: Alerts are arrays, not objects
                 // Get customer from sale relationship
-                $sale = \App\Models\Sale::with('customer')->find($alert['sale_id']);
+                $sale = Sale::with('customer')->find($alert['sale_id']);
                 if (! $sale || ! $sale->customer) {
                     $this->warn("Skipping alert for sale {$alert['sale_code']}: customer not found");
+
                     continue;
                 }
 
@@ -99,7 +102,7 @@ class SendPaymentRemindersCommand extends Command
                 ];
 
                 // Send notification to customer
-                $sale->customer->notify(new \App\Notifications\PaymentReminderNotification($alertObject));
+                $sale->customer->notify(new PaymentReminderNotification($alertObject));
                 $sent++;
             } catch (\Exception $e) {
                 $this->error("Failed to send reminder for {$alert['sale_code']}: {$e->getMessage()}");

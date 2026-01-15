@@ -180,7 +180,7 @@ class SaleService implements SaleServiceInterface
                     // CRIT-04 FIX: Find stock movements by sale_item reference (matching UpdateStockOnSale listener)
                     // The UpdateStockOnSale listener creates movements with reference_type='sale_item' and reference_id=sale_item_id
                     $saleItemIds = $sale->items->pluck('id')->toArray();
-                    
+
                     $existingMovements = StockMovement::where('reference_type', 'sale_item')
                         ->whereIn('reference_id', $saleItemIds)
                         ->get();

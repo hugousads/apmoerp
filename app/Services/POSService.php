@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Branch;
+use App\Models\PosClosing;
 use App\Models\PosSession;
 use App\Models\Product;
 use App\Models\Sale;
@@ -14,6 +16,7 @@ use App\Models\User;
 use App\Rules\ValidPriceOverride;
 use App\Services\Contracts\POSServiceInterface;
 use App\Traits\HandlesServiceErrors;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class POSService implements POSServiceInterface
@@ -413,12 +416,12 @@ class POSService implements POSServiceInterface
      * HIGH-01 FIX: Close POS day for a branch
      * Finalizes all sales for the given date and generates summary report
      *
-     * @param Branch $branch The branch to close
-     * @param \Carbon\Carbon $date The date to close
-     * @param bool $force Force close even if there are open sessions
+     * @param  Branch  $branch  The branch to close
+     * @param  Carbon  $date  The date to close
+     * @param  bool  $force  Force close even if there are open sessions
      * @return array Summary of closed day including sales count and receipts
      */
-    public function closeDay(\App\Models\Branch $branch, \Carbon\Carbon $date, bool $force = false): array
+    public function closeDay(Branch $branch, Carbon $date, bool $force = false): array
     {
         return $this->handleServiceOperation(
             callback: function () use ($branch, $date, $force) {
@@ -453,7 +456,7 @@ class POSService implements POSServiceInterface
                 }
 
                 // Get receipts count from payments
-                $receiptsCount = SalePayment::whereIn('sale_id', 
+                $receiptsCount = SalePayment::whereIn('sale_id',
                     Sale::where('branch_id', $branch->id)
                         ->whereDate('created_at', $date)
                         ->whereNotIn('status', ['cancelled', 'void', 'returned', 'refunded'])
@@ -461,8 +464,8 @@ class POSService implements POSServiceInterface
                 )->count();
 
                 // Record the closing if PosClosing model exists
-                if (class_exists(\App\Models\PosClosing::class)) {
-                    \App\Models\PosClosing::updateOrCreate(
+                if (class_exists(PosClosing::class)) {
+                    PosClosing::updateOrCreate(
                         [
                             'branch_id' => $branch->id,
                             'date' => $date->toDateString(),

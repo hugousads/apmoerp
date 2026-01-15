@@ -93,7 +93,7 @@ class SetBranchContext
             // Super admins can access all branches
             if (! BranchContextManager::isSuperAdmin($user)) {
                 $accessibleBranchIds = BranchContextManager::getAccessibleBranchIds();
-                
+
                 if (! in_array((int) $branch->getKey(), $accessibleBranchIds, true)) {
                     return $this->error(
                         'You do not have access to this branch.',

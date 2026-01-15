@@ -30,8 +30,8 @@ class GenerateRecurringInvoicesJob implements ShouldQueue
     public function handle(): void
     {
         $target = $this->forDate ? \Carbon\Carbon::parse($this->forDate) : now();
-        
-        // MED-05 FIX: Use RentalService instead of duplicating logic
+
+        // HIGH-01 & HIGH-08 FIX: Use RentalService instead of duplicating logic
         // This ensures consistent code, due_date, and status handling
         $rentalService = app(RentalService::class);
 

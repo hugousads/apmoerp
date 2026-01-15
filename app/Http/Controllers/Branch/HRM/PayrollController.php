@@ -17,13 +17,13 @@ class PayrollController extends Controller
     {
         $per = min(max($request->integer('per_page', 20), 1), 100);
         $q = Payroll::query()->orderByDesc('id');
-        
+
         // CRIT-05 FIX: Use year/month columns instead of 'period'
         if ($request->filled('period')) {
             $periodDate = \Carbon\Carbon::createFromFormat('Y-m', $request->input('period'));
             if ($periodDate) {
                 $q->where('year', $periodDate->year)
-                  ->where('month', $periodDate->month);
+                    ->where('month', $periodDate->month);
             }
         }
 
