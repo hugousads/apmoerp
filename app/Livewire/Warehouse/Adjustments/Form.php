@@ -128,10 +128,7 @@ class Form extends Component
             // Only append if note is provided and different from reason
             if ($this->note && $this->note !== $this->reason) {
                 // Append note to reason if both are provided
-                $combinedReason = $this->reason;
-                if ($this->note) {
-                    $combinedReason .= ' - '.$this->note;
-                }
+                $combinedReason = $this->reason.' - '.$this->note;
                 $this->adjustment->reason = $combinedReason;
                 $this->adjustment->save();
             }

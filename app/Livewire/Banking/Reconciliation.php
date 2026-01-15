@@ -269,12 +269,13 @@ class Reconciliation extends Component
 
         // V23-CRIT-03 FIX: Use correct field names (status, reconciliation_id)
         // and ensure transactions belong to the selected bank account
+        // Note: reconciliation_id is left as null since this simple wizard doesn't create
+        // a BankReconciliation record. For full reconciliation with tracking, use BankingService.
         $matchedIds = collect($this->matchedTransactions)->pluck('id');
         BankTransaction::whereIn('id', $matchedIds)
             ->where('bank_account_id', $this->accountId) // Ensure transactions belong to this account
             ->update([
                 'status' => 'reconciled',
-                'reconciliation_id' => null, // Will be set when using BankingService properly
             ]);
 
         // Update account last reconciled date
