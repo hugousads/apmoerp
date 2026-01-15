@@ -123,6 +123,19 @@ class Form extends Component
                 $this->adjustment = Adjustment::create($data);
             }
 
+            // V23-MED-03 FIX: Save note field using accessor (maps to reason)
+            // since 'note' is not in fillable but has setNoteAttribute accessor
+            // Only append if note is provided and different from reason
+            if ($this->note && $this->note !== $this->reason) {
+                // Append note to reason if both are provided
+                $combinedReason = $this->reason;
+                if ($this->note) {
+                    $combinedReason .= ' - '.$this->note;
+                }
+                $this->adjustment->reason = $combinedReason;
+                $this->adjustment->save();
+            }
+
             $existingItemIds = $this->adjustment->items()->pluck('id');
             if ($existingItemIds->isNotEmpty()) {
                 StockMovement::where('reference_type', AdjustmentItem::class)
