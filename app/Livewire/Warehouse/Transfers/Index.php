@@ -61,11 +61,27 @@ class Index extends Component
             abort(403);
         }
 
+        // V26-CRIT-02 FIX: Check transfer status before proceeding to ensure idempotency
+        // This prevents duplicate stock movements if approve is called multiple times
+        // (e.g., double-click, request replay, concurrent requests)
+        if (! in_array($transfer->status, ['pending', 'in_transit'])) {
+            session()->flash('error', __('Transfer cannot be approved. Current status: :status', ['status' => $transfer->status]));
+
+            return;
+        }
+
         // V25-CRIT-01 FIX: Create stock movements when approving transfer
         // Transfer completion should create two movements per item:
         // - transfer_out from from_warehouse_id
         // - transfer_in to to_warehouse_id
         DB::transaction(function () use ($transfer) {
+            // V26-CRIT-02 FIX: Re-check status inside transaction with lock to handle race conditions
+            $transfer = Transfer::lockForUpdate()->find($transfer->id);
+            if (! in_array($transfer->status, ['pending', 'in_transit'])) {
+                // Another request already processed this transfer
+                return;
+            }
+
             $stockMovementRepo = app(StockMovementRepositoryInterface::class);
 
             // Load items with product relationship

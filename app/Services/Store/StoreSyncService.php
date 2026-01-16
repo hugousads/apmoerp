@@ -413,8 +413,22 @@ class StoreSyncService
             ]);
 
             foreach ($data['line_items'] ?? [] as $lineItem) {
+                // V26-MED-07 FIX: Guard against missing product_id in line_items
+                // Some Shopify line_items may not have product_id (custom items, gifts, adjustments)
+                $externalProductId = $lineItem['product_id'] ?? null;
+                if ($externalProductId === null) {
+                    Log::warning('Shopify order sync: skipping line item without product_id', [
+                        'store_id' => $store->id,
+                        'external_order_id' => $externalId,
+                        'line_item_name' => $lineItem['name'] ?? null,
+                        'sku' => $lineItem['sku'] ?? null,
+                    ]);
+
+                    continue;
+                }
+
                 $productMapping = ProductStoreMapping::where('store_id', $store->id)
-                    ->where('external_id', (string) $lineItem['product_id'])
+                    ->where('external_id', (string) $externalProductId)
                     ->first();
 
                 // CRITICAL-05 FIX: Skip items without product mapping to avoid null product_id
@@ -423,7 +437,7 @@ class StoreSyncService
                     Log::warning('Shopify order sync: skipping line item with unmapped product', [
                         'store_id' => $store->id,
                         'external_order_id' => $externalId,
-                        'external_product_id' => $lineItem['product_id'] ?? null,
+                        'external_product_id' => $externalProductId,
                         'sku' => $lineItem['sku'] ?? null,
                     ]);
 
@@ -565,8 +579,22 @@ class StoreSyncService
             ]);
 
             foreach ($data['line_items'] ?? [] as $lineItem) {
+                // V26-MED-07 FIX: Guard against missing product_id in line_items
+                // Some WooCommerce line_items may not have product_id (custom items, fees, adjustments)
+                $externalProductId = $lineItem['product_id'] ?? null;
+                if ($externalProductId === null) {
+                    Log::warning('WooCommerce order sync: skipping line item without product_id', [
+                        'store_id' => $store->id,
+                        'external_order_id' => $externalId,
+                        'line_item_name' => $lineItem['name'] ?? null,
+                        'sku' => $lineItem['sku'] ?? null,
+                    ]);
+
+                    continue;
+                }
+
                 $productMapping = ProductStoreMapping::where('store_id', $store->id)
-                    ->where('external_id', (string) $lineItem['product_id'])
+                    ->where('external_id', (string) $externalProductId)
                     ->first();
 
                 // CRITICAL-05 FIX: Skip items without product mapping to avoid null product_id
@@ -575,7 +603,7 @@ class StoreSyncService
                     Log::warning('WooCommerce order sync: skipping line item with unmapped product', [
                         'store_id' => $store->id,
                         'external_order_id' => $externalId,
-                        'external_product_id' => $lineItem['product_id'] ?? null,
+                        'external_product_id' => $externalProductId,
                         'sku' => $lineItem['sku'] ?? null,
                     ]);
 
