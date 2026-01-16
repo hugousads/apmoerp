@@ -26,6 +26,9 @@ class Reconciliation extends Component
     // V23-CRIT-03 FIX: Add AuthorizesRequests trait for $this->authorize() support
     use AuthorizesRequests;
 
+    // V28-MEDIUM-04 FIX: Tolerance threshold for reconciliation balance difference
+    private const TOLERANCE_THRESHOLD = '0.01';
+
     // Wizard state
     public int $currentStep = 1;
 
@@ -295,7 +298,8 @@ class Reconciliation extends Component
     public function complete(): void
     {
         // V28-MEDIUM-04 FIX: Use bccomp to compare string difference with tolerance threshold
-        if (bccomp($this->difference, '0.01', 4) > 0 || bccomp($this->difference, '-0.01', 4) < 0) {
+        $negativeThreshold = '-'.self::TOLERANCE_THRESHOLD;
+        if (bccomp($this->difference, self::TOLERANCE_THRESHOLD, 4) > 0 || bccomp($this->difference, $negativeThreshold, 4) < 0) {
             session()->flash('warning', __('There is still a difference of :amount. Are you sure you want to complete?', [
                 'amount' => number_format((float) $this->difference, 2),
             ]));

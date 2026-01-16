@@ -413,26 +413,29 @@ class StockTransferService
                         ->orderBy('id', 'asc')
                         ->get();
 
-                    $remainingToReceive = $qtyReceived;
+                    // V28-CRITICAL-01 FIX: Use string-based arithmetic to maintain precision
+                    $remainingToReceive = (string) $qtyReceived;
                     foreach ($transitRecords as $transitRecord) {
-                        if ($remainingToReceive <= 0) {
+                        if (bccomp($remainingToReceive, '0', 4) <= 0) {
                             // No more to receive - this transit record stays in transit
                             break;
                         }
 
-                        if ($transitRecord->quantity <= $remainingToReceive) {
+                        $transitQty = (string) $transitRecord->quantity;
+                        if (bccomp($transitQty, $remainingToReceive, 4) <= 0) {
                             // Fully receive this transit record
                             $transitRecord->markAsReceived();
-                            $remainingToReceive -= (float) $transitRecord->quantity;
+                            $remainingToReceive = bcsub($remainingToReceive, $transitQty, 4);
                         } else {
                             // Partial receive: split the transit record
                             // Create a new record for the remaining in-transit quantity
+                            $splitQty = bcsub($transitQty, $remainingToReceive, 4);
                             InventoryTransit::create([
                                 'product_id' => $transitRecord->product_id,
                                 'from_warehouse_id' => $transitRecord->from_warehouse_id,
                                 'to_warehouse_id' => $transitRecord->to_warehouse_id,
                                 'stock_transfer_id' => $transitRecord->stock_transfer_id,
-                                'quantity' => $transitRecord->quantity - $remainingToReceive,
+                                'quantity' => $splitQty,
                                 'unit_cost' => $transitRecord->unit_cost,
                                 'batch_number' => $transitRecord->batch_number,
                                 'expiry_date' => $transitRecord->expiry_date,
@@ -446,7 +449,7 @@ class StockTransferService
                             // Update the original record with received quantity and mark as received
                             $transitRecord->update(['quantity' => $remainingToReceive]);
                             $transitRecord->markAsReceived();
-                            $remainingToReceive = 0;
+                            $remainingToReceive = '0';
                         }
                     }
 
