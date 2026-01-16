@@ -116,11 +116,16 @@ class SaleService implements SaleServiceInterface
                         $refund = bcadd($refund, $line, 2);
 
                         // V25-CRIT-03 FIX: Track returned item data for stock movements
+                        // V26-HIGH-03 FIX: Use cost_price instead of unit_price for unit_cost
+                        // unit_price is the selling price, cost_price is the actual inventory cost
+                        // Fall back to product's cost if sale item doesn't have cost_price recorded
+                        $unitCost = $si->cost_price ?? $si->product?->cost ?? 0;
                         $returnedItemsData[] = [
                             'sale_item_id' => $si->id,
                             'product_id' => $si->product_id,
                             'qty' => $qty,
                             'unit_price' => $si->unit_price,
+                            'unit_cost' => $unitCost,
                         ];
                     }
 
@@ -166,6 +171,8 @@ class SaleService implements SaleServiceInterface
 
                         foreach ($returnedItemsData as $itemData) {
                             // Create stock movement to add items back to inventory
+                            // V26-HIGH-03 FIX: Use unit_cost (actual cost) instead of unit_price (selling price)
+                            // This ensures inventory valuation and COGS reports are accurate
                             $stockMovementRepo->create([
                                 'product_id' => $itemData['product_id'],
                                 'warehouse_id' => $sale->warehouse_id,
@@ -175,7 +182,7 @@ class SaleService implements SaleServiceInterface
                                 'reference_type' => 'sale_item_return',
                                 'reference_id' => $itemData['sale_item_id'],
                                 'notes' => "Sale return for Sale #{$sale->code}: {$reason}",
-                                'unit_cost' => $itemData['unit_price'],
+                                'unit_cost' => $itemData['unit_cost'],
                                 'created_by' => auth()->id(),
                             ]);
                         }
@@ -283,6 +290,11 @@ class SaleService implements SaleServiceInterface
                         ->whereIn('reference_id', $saleItemIds)
                         ->get();
 
+                    // V26-HIGH-06 FIX: Use StockMovementRepository instead of StockMovement::create()
+                    // This ensures proper stock_before/stock_after calculation, locking for concurrency,
+                    // and consistent behavior with other stock operations
+                    $stockMovementRepo = app(\App\Repositories\Contracts\StockMovementRepositoryInterface::class);
+
                     foreach ($existingMovements as $movement) {
                         // Check if reversal already exists for this specific sale_item movement
                         $reversalExists = StockMovement::where('reference_type', 'sale_item_void')
@@ -295,14 +307,17 @@ class SaleService implements SaleServiceInterface
                             continue;
                         }
 
-                        // Create reversal movement (opposite quantity)
-                        StockMovement::create([
+                        // V26-HIGH-06 FIX: Create reversal movement using repository
+                        // The original sale movement quantity is negative (stock out), so we reverse it (stock in)
+                        $stockMovementRepo->create([
                             'warehouse_id' => $movement->warehouse_id,
                             'product_id' => $movement->product_id,
                             'movement_type' => 'sale_void',
                             'reference_type' => 'sale_item_void',
                             'reference_id' => $movement->reference_id, // Keep same reference_id (sale_item_id) for traceability
-                            'quantity' => -$movement->quantity, // Reverse the quantity (negative becomes positive)
+                            'qty' => abs($movement->quantity), // Repository will handle direction
+                            'direction' => 'in', // Void adds stock back
+                            'unit_cost' => $movement->unit_cost,
                             'notes' => "Void reversal for Sale #{$sale->code}",
                             'created_by' => auth()->id(),
                         ]);

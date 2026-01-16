@@ -207,9 +207,11 @@
                             <span class="text-gray-600 dark:text-gray-400">{{ __('Statement Balance') }}</span>
                             <span class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($statementBalance, 2) }}</span>
                         </div>
+                        {{-- V26-HIGH-02 FIX: Use backend-calculated matchedTotal which properly accounts for
+                             signed amounts (deposits = positive, withdrawals = negative) instead of raw sum --}}
                         <div class="flex justify-between">
-                            <span class="text-gray-600 dark:text-gray-400">{{ __('Matched Transactions Total') }}</span>
-                            <span class="font-medium text-gray-800 dark:text-gray-200">{{ number_format(collect($matchedTransactions)->sum('amount'), 2) }}</span>
+                            <span class="text-gray-600 dark:text-gray-400">{{ __('Matched Transactions Net') }}</span>
+                            <span class="font-medium text-gray-800 dark:text-gray-200">{{ number_format($matchedTotal, 2) }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600 dark:text-gray-400">{{ __('Transactions Matched') }}</span>
@@ -227,7 +229,8 @@
                     @if(abs($difference) >= 0.01)
                         <div class="mt-4 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                             <p class="text-sm text-amber-700 dark:text-amber-300">
-                                <strong>{{ __('Warning') }}:</strong> {{ __('There is a difference between the statement balance and matched transactions. You may want to review the transactions before completing.') }}
+                                {{-- V26-CRIT-01 FIX: Updated warning text to accurately describe the difference calculation --}}
+                                <strong>{{ __('Warning') }}:</strong> {{ __('There is a difference between the statement balance and system balance. You may want to review the transactions before completing.') }}
                             </p>
                         </div>
                     @else

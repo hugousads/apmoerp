@@ -23,6 +23,7 @@ use App\Services\ModuleFieldService;
 use App\Services\ProductService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 // Services
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -56,6 +57,20 @@ class AppServiceProvider extends ServiceProvider
             Model::preventAccessingMissingAttributes();
             Model::preventLazyLoading();
         }
+
+        // V26-HIGH-05 FIX: Define morphMap for StockMovement polymorphic relationships
+        // This maps the reference_type string values used in stock_movements table to actual model classes
+        // Without this, $stockMovement->source will return null when reference_type is a string alias
+        Relation::morphMap([
+            'sale_item' => \App\Models\SaleItem::class,
+            'sale_item_return' => \App\Models\SaleItem::class,
+            'sale_item_void' => \App\Models\SaleItem::class,
+            'purchase_item' => \App\Models\PurchaseItem::class,
+            'transfer' => \App\Models\Transfer::class,
+            'return_note' => \App\Models\ReturnNote::class,
+            'adjustment' => \App\Models\Adjustment::class,
+            'adjustment_item' => \App\Models\AdjustmentItem::class,
+        ]);
 
         // Configurable query logging for non-production environments
         if (config('database.query_log.enabled')) {
