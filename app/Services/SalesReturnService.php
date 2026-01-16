@@ -325,6 +325,8 @@ class SalesReturnService
 
     /**
      * Restock returned items to inventory
+     * V27-HIGH-02 FIX: Pass unit_cost to adjustStock for inventory valuation
+     * V27-MED-05 FIX: Pass userId to adjustStock for CLI/queue context support
      */
     protected function restockItems(SalesReturn $return, int $userId): void
     {
@@ -333,14 +335,23 @@ class SalesReturnService
                 continue;
             }
 
+            // V27-HIGH-02 FIX: Get unit_cost from the original sale item for proper valuation
+            $unitCost = $item->unit_price ?? $item->saleItem?->unit_price ?? null;
+
             // Add stock back to inventory
+            // V27-HIGH-02 FIX: Pass unit_cost for inventory valuation
+            // V27-MED-05 FIX: Pass userId for CLI/queue context support
             $this->stockService->adjustStock(
                 productId: $item->product_id,
                 warehouseId: $return->warehouse_id,
                 quantity: $item->qty_returned,
                 type: StockMovement::TYPE_RETURN,
                 reference: "Return: {$return->return_number}",
-                notes: "Restocked from sales return - Condition: {$item->condition}"
+                notes: "Restocked from sales return - Condition: {$item->condition}",
+                referenceId: null,
+                referenceType: null,
+                unitCost: $unitCost,
+                userId: $userId
             );
 
             // Mark item as restocked
