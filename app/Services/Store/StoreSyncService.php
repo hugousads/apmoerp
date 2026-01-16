@@ -55,12 +55,20 @@ class StoreSyncService
             $client = new ShopifyClient($store);
             $mappings = ProductStoreMapping::where('store_id', $store->id)->with('product')->get();
 
+            // V25-HIGH-04 FIX: Set branch context before calling currentQty
+            // Without branch context, currentQty returns 0.0
+            request()->attributes->set('branch_id', $store->branch_id);
+
+            // V25-HIGH-04 FIX: Get default warehouse for the store's branch for more accurate stock
+            $warehouseId = $this->getDefaultWarehouseForBranch($store->branch_id);
+
             foreach ($mappings as $mapping) {
                 try {
                     $product = $mapping->product;
                     if ($product) {
                         // Get current stock level from inventory service
-                        $currentQty = $this->inventory->currentQty($product->id);
+                        // V25-HIGH-04 FIX: Pass warehouse_id for warehouse-specific stock
+                        $currentQty = $this->inventory->currentQty($product->id, $warehouseId);
                         $client->updateInventory($mapping->external_id, (int) $currentQty);
                         $mapping->markSynced();
                         $log->incrementSuccess();
@@ -139,12 +147,20 @@ class StoreSyncService
             $client = new WooCommerceClient($store);
             $mappings = ProductStoreMapping::where('store_id', $store->id)->with('product')->get();
 
+            // V25-HIGH-04 FIX: Set branch context before calling currentQty
+            // Without branch context, currentQty returns 0.0
+            request()->attributes->set('branch_id', $store->branch_id);
+
+            // V25-HIGH-04 FIX: Get default warehouse for the store's branch for more accurate stock
+            $warehouseId = $this->getDefaultWarehouseForBranch($store->branch_id);
+
             foreach ($mappings as $mapping) {
                 try {
                     $product = $mapping->product;
                     if ($product) {
                         // Get current stock level from inventory service
-                        $currentQty = $this->inventory->currentQty($product->id);
+                        // V25-HIGH-04 FIX: Pass warehouse_id for warehouse-specific stock
+                        $currentQty = $this->inventory->currentQty($product->id, $warehouseId);
                         $client->updateStock($mapping->external_id, (int) $currentQty);
                         $mapping->markSynced();
                         $log->incrementSuccess();
@@ -336,9 +352,17 @@ class StoreSyncService
             ->first();
 
         if ($existingOrder) {
+            $oldStatus = $existingOrder->status;
+            $newStatus = $this->mapShopifyOrderStatus($data['financial_status'] ?? 'pending');
+
             $existingOrder->update([
-                'status' => $this->mapShopifyOrderStatus($data['financial_status'] ?? 'pending'),
+                'status' => $newStatus,
             ]);
+
+            // V25-HIGH-03 FIX: Dispatch SaleCompleted event when status transitions to completed
+            if ($oldStatus !== 'completed' && $newStatus === 'completed' && $existingOrder->warehouse_id) {
+                event(new \App\Events\SaleCompleted($existingOrder->fresh('items')));
+            }
 
             return;
         }
@@ -362,15 +386,28 @@ class StoreSyncService
                 $customerId = $customer->id;
             }
 
+            // V25-HIGH-03 FIX: Get default warehouse for the store's branch
+            $warehouseId = $this->getDefaultWarehouseForBranch($store->branch_id);
+
+            // V25-HIGH-03 FIX: Parse order date from Shopify using Carbon for better error handling
+            $orderDate = isset($data['created_at'])
+                ? \Carbon\Carbon::parse($data['created_at'])->toDateString()
+                : now()->toDateString();
+
+            $status = $this->mapShopifyOrderStatus($data['financial_status'] ?? 'pending');
+
             // CRITICAL-05 FIX: Use correct schema column names
+            // V25-HIGH-03 FIX: Include warehouse_id, sale_date, and created_by
             $sale = Sale::create([
                 'branch_id' => $store->branch_id,
+                'warehouse_id' => $warehouseId, // V25-HIGH-03 FIX
                 'customer_id' => $customerId,
+                'sale_date' => $orderDate, // V25-HIGH-03 FIX
                 'subtotal' => (float) ($data['subtotal_price'] ?? 0),
                 'tax_amount' => (float) ($data['total_tax'] ?? 0),
                 'discount_amount' => (float) ($data['total_discounts'] ?? 0),
                 'total_amount' => (float) ($data['total_price'] ?? 0),
-                'status' => $this->mapShopifyOrderStatus($data['financial_status'] ?? 'pending'),
+                'status' => $status,
                 'channel' => 'shopify',
                 'external_reference' => $externalId,
             ]);
@@ -401,6 +438,11 @@ class StoreSyncService
                     'discount_amount' => (float) ($lineItem['total_discount'] ?? 0),
                     'line_total' => (float) ($lineItem['quantity'] ?? 1) * (float) ($lineItem['price'] ?? 0) - (float) ($lineItem['total_discount'] ?? 0),
                 ]);
+            }
+
+            // V25-HIGH-03 FIX: Dispatch SaleCompleted event for completed orders to trigger inventory updates
+            if ($status === 'completed' && $warehouseId) {
+                event(new \App\Events\SaleCompleted($sale->fresh('items')));
             }
         });
     }
@@ -459,9 +501,17 @@ class StoreSyncService
             ->first();
 
         if ($existingOrder) {
+            $oldStatus = $existingOrder->status;
+            $newStatus = $this->mapWooOrderStatus($data['status'] ?? 'pending');
+
             $existingOrder->update([
-                'status' => $this->mapWooOrderStatus($data['status'] ?? 'pending'),
+                'status' => $newStatus,
             ]);
+
+            // V25-HIGH-03 FIX: Dispatch SaleCompleted event when status transitions to completed
+            if ($oldStatus !== 'completed' && $newStatus === 'completed' && $existingOrder->warehouse_id) {
+                event(new \App\Events\SaleCompleted($existingOrder->fresh('items')));
+            }
 
             return;
         }
@@ -488,15 +538,28 @@ class StoreSyncService
                 $customerId = $customer->id;
             }
 
+            // V25-HIGH-03 FIX: Get default warehouse for the store's branch
+            $warehouseId = $this->getDefaultWarehouseForBranch($store->branch_id);
+
+            // V25-HIGH-03 FIX: Parse order date from WooCommerce using Carbon for better error handling
+            $orderDate = isset($data['date_created'])
+                ? \Carbon\Carbon::parse($data['date_created'])->toDateString()
+                : now()->toDateString();
+
+            $status = $this->mapWooOrderStatus($data['status'] ?? 'pending');
+
             // CRITICAL-05 FIX: Use correct schema column names
+            // V25-HIGH-03 FIX: Include warehouse_id and sale_date
             $sale = Sale::create([
                 'branch_id' => $store->branch_id,
+                'warehouse_id' => $warehouseId, // V25-HIGH-03 FIX
                 'customer_id' => $customerId,
+                'sale_date' => $orderDate, // V25-HIGH-03 FIX
                 'subtotal' => (float) ($data['total'] ?? 0) - (float) ($data['total_tax'] ?? 0),
                 'tax_amount' => (float) ($data['total_tax'] ?? 0),
                 'discount_amount' => (float) ($data['discount_total'] ?? 0),
                 'total_amount' => (float) ($data['total'] ?? 0),
-                'status' => $this->mapWooOrderStatus($data['status'] ?? 'pending'),
+                'status' => $status,
                 'channel' => 'woocommerce',
                 'external_reference' => $externalId,
             ]);
@@ -527,6 +590,11 @@ class StoreSyncService
                     'discount_amount' => 0,
                     'line_total' => (float) ($lineItem['total'] ?? 0),
                 ]);
+            }
+
+            // V25-HIGH-03 FIX: Dispatch SaleCompleted event for completed orders
+            if ($status === 'completed' && $warehouseId) {
+                event(new \App\Events\SaleCompleted($sale->fresh('items')));
             }
         });
     }
