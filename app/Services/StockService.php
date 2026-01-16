@@ -202,7 +202,11 @@ class StockService
 
         // Handle branch ID - either a numeric value or a column reference
         if (is_int($branchIdValueOrColumn)) {
-            // V27-SEC FIX: Explicit cast to int for defense in depth against SQL injection
+            // V27-SEC FIX: Validate and cast for defense in depth against SQL injection
+            // Branch IDs should always be positive integers
+            if ($branchIdValueOrColumn < 1) {
+                throw new \InvalidArgumentException('Branch ID must be a positive integer');
+            }
             $branchIdValue = (int) $branchIdValueOrColumn;
             $branchCondition = "w.branch_id = {$branchIdValue}";
         } else {
