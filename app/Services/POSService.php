@@ -365,7 +365,8 @@ class POSService implements POSServiceInterface
                     'status' => PosSession::STATUS_CLOSED,
                     'closed_at' => now(),
                     'closing_notes' => $notes,
-                    'closed_by' => auth()->id(),
+                    // V33-CRIT-02 FIX: Use actual_user_id() for correct audit attribution during impersonation
+                    'closed_by' => actual_user_id(),
                 ]);
 
                 return $session->fresh();

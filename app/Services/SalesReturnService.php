@@ -77,7 +77,8 @@ class SalesReturnService
                     'notes' => $validated['notes'] ?? null,
                     'currency' => $sale->currency,
                     'refund_method' => $validated['refund_method'] ?? 'original',
-                    'created_by' => auth()->id(),
+                    // V33-CRIT-02 FIX: Use actual_user_id() for correct audit attribution during impersonation
+                    'created_by' => actual_user_id(),
                 ]);
 
                 // Add return items
@@ -197,7 +198,8 @@ class SalesReturnService
         return $this->handleServiceOperation(
             callback: fn() => DB::transaction(function () use ($returnId, $validated) {
                 $return = SalesReturn::with(['creditNotes', 'customer', 'refunds'])->findOrFail($returnId);
-                $userId = auth()->id();
+                // V33-CRIT-02 FIX: Use actual_user_id() for correct audit attribution during impersonation
+                $userId = actual_user_id();
 
                 abort_if(
                     !$return->canBeProcessed(),
