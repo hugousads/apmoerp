@@ -2002,3 +2002,255 @@ This report includes **only**: (1) bugs from the **v32 report** that are **still
 - File: `app/Services/WoodService.php`
 - Line (v33): `83`
 - Evidence: `'qty' => (float) ($payload['qty'] ?? 0),`
+
+# APMO ERP v33 — Bug Report (New + Remaining)
+
+**Date:** 2026-01-17
+
+> **Scope:** Static review لملفات `apmoerpv33.zip` بعد فك الضغط (بدون تشغيل/اختبارات).  
+> **Rule:** هذا التقرير يحتوي **فقط** على:
+> 1) Bugs جديدة في v33
+> 2) Bugs قديمة مازالت غير مُصلحة  
+> كما يوجد قسم Regression Check لتأكيد إصلاح أهم مشاكل v32.
+
+---
+
+## 1) Executive summary (ملخص سريع)
+
+### ✅ What’s fixed (Regression from v32)
+تم التأكد من إصلاح العناصر التالية (كانت مذكورة في تقرير v32):
+
+- **StockService الآن يحدّث products.stock_quantity** بعد إنشاء stock movements ✅
+- **Stock movements أصبحت تتحقق من تطابق branch بين المنتج والwarehouse** ✅
+- **مولدات الأرقام التسلسلية (returns/notes/transfers) أصبحت داخل transactions** ✅
+- **Branch P&L أصبح يعتمد على sale_date/purchase_date بدل created_at** ✅
+- **API set-stock أضاف tolerance لمنع micro-movements بسبب float** ✅
+- **Stock aging أصبح يعتمد على inbound-only movements** ✅
+
+> ملاحظة: العناصر “المُصلحة” ليست مذكورة مرة أخرى في قسم Bugs (التزامًا بطلبك).
+
+### 🧨 Top NEW/Remaining problems in v33
+1) **POS Reports still financially incorrect** (created_at + weak status filters)  
+2) **Audit attribution problems** (auth()->id + fallback ??1 + impersonation mismatch)  
+3) **Inventory locking strategy may cause high contention under load**  
+4) **Partial return logic marks sale as fully returned**  
+
+---
+
+## 2) Detected framework versions (تأكيد النسخ)
+
+From `composer.lock`:
+
+- **Laravel/framework:** `12.44.0`
+- **livewire/livewire:** `v4.0.1` ✅ (Project is upgraded to Livewire v4.0.1)
+
+---
+
+## 3) Regression Check vs v32 (مختصر)
+
+| v32 item | Status in v33 |
+|---|---|
+| StockService not updating product cache | ✅ Fixed |
+| Cross-branch stock movement validation missing | ✅ Fixed |
+| Sequential doc numbers without transaction safety | ✅ Fixed |
+| Branch P&L used created_at | ✅ Fixed |
+| API set-stock float micro-drift | ✅ Fixed |
+| Stock aging computed from all movement types | ✅ Fixed |
+| Float-based inventory math drift | ⚠️ Still exists (see V33-MED-01) |
+| StockTransfer history changed_by nullable | ⚠️ Still possible (see V33-MED-03) |
+| Integrity checker raw SQL composition | ⚠️ Still exists (LOW) |
+
+---
+
+# 4) Bugs (NEW + Remaining)
+
+Severity: **CRITICAL / HIGH / MEDIUM / LOW**
+
+---
+
+## CRITICAL
+
+### V33-CRIT-01 — POS Daily/Charts reports use created_at + weak status filtering (finance correctness bug)
+
+**Files**
+- `app/Livewire/Pos/DailyReport.php`
+- `app/Livewire/Admin/Reports/PosChartsDashboard.php`
+
+**Evidence (examples)**
+- DailyReport filters by `whereDate('created_at', ...)` and excludes only `cancelled`.
+- PosChartsDashboard builds analytics from `created_at` and does **no status exclusion**.
+
+**Impact**
+- الإيرادات/الخصومات/الضرائب تظهر **مخالفة للواقع** عند:
+  - backdated sales
+  - void/refund/returns
+  - أي workflow لا يعتبر `cancelled` فقط
+- قرارات إدارية/مالية خاطئة + اختلافات مع التقارير المحاسبية.
+
+**Fix**
+- Use business date: `sale_date` (or `posted_at` if that is your accounting basis).
+- Exclude statuses similar to POSService closeDay logic: `cancelled`, `void`, `voided`, `returned`, `refunded`.
+- Consider centralizing a “valid POS sales scope” to avoid repeating filters.
+
+---
+
+### V33-CRIT-02 — Audit & actor attribution inconsistent (auth()->id & fallback ??1)
+
+**Files (examples)**
+- `app/Services/AccountingService.php` (sets created_by/approved_by using auth()->id)
+- `app/Services/StockService.php` (created_by = $userId ?? auth()->id())
+- `app/Services/SaleService.php` (calls reverseJournalEntry with `auth()->id() ?? 1`)
+- Helper exists: `app/Helpers/helpers.php` provides `actual_user_id()`.
+
+**Impact**
+- في impersonation: الـ logs قد تنسب العمليات للشخص المنتحل (impersonated) بدل الشخص الحقيقي.
+- في CLI/queue/webhook: `auth()->id()` قد تكون null → created_by/approved_by تصبح null أو fallback `1` → تشويه تاريخ التدقيق وربما كسر constraints.
+
+**Fix**
+- Replace most direct uses of `auth()->id()` with `actual_user_id()` where audit correctness matters.
+- Remove `?? 1` hard fallback entirely.
+- Enforce explicit `$userId` in service APIs that can run outside HTTP sessions (queue/CLI).
+
+---
+
+## HIGH
+
+### V33-HIGH-01 — Inventory locking strategy may cause contention under POS load
+
+**Files**
+- `app/Services/StockService.php`
+- `app/Repositories/StockMovementRepository.php`
+
+**What happens**
+- Every stock adjustment locks the **warehouse row** (`warehouses.id FOR UPDATE`) as lock anchor.
+- Then sums movements + creates movement + recalculates product stock cache from all movements.
+
+**Impact**
+- High-concurrency POS: عمليات على نفس warehouse تتحول عمليًا إلى **single-threaded bottleneck**.
+- ممكن يظهر: slow checkout, timeouts, deadlocks/lock waits.
+
+**Fix (preferred)**
+- Introduce a dedicated stock level table (e.g., `stock_levels(product_id, warehouse_id, qty)` unique row)
+- Lock **that** row (or create it) and update incrementally.
+- Avoid full `SUM(stock_movements)` on each movement (increment cache instead).
+
+---
+
+### V33-HIGH-02 — Sale return marks sale as fully `returned` even if partial
+
+**File**
+- `app/Services/SaleService.php` (`handleReturn`)
+
+**Problem**
+- After processing any return note, it sets `$sale->status = 'returned'` unconditionally.
+
+**Impact**
+- لا يوجد فرق بين partial return و full return → تقارير المبيعات/الذمم/الربحية قد تصبح مضروبة.
+- منطق الأعمال قد يمنع إجراءات لاحقة بشكل خاطئ.
+
+**Fix**
+- Introduce status: `partially_returned` OR compute status from returned qty vs sold qty.
+- Track returned quantities per sale_item (table/structure) OR compute reliably from movements.
+
+---
+
+### V33-HIGH-03 — ReturnNote reference generation still race-prone under concurrency
+
+**File**
+- `app/Services/SaleService.php` (`handleReturn` reference generation loop)
+
+**Problem**
+- It reads last note + checks `exists()` then creates.
+- Under concurrency (esp. across branches), two requests can still race between exists() and create().
+
+**Impact**
+- Duplicate reference numbers OR failed inserts if unique index exists.
+- Bad auditability and reconciliation.
+
+**Fix**
+- Enforce DB unique index on `reference_number` and implement **retry on duplicate key**.
+- Or move sequencing to atomic sequence table.
+
+---
+
+## MEDIUM
+
+### V33-MED-01 — Stock math still uses floats with DECIMAL fields (precision drift)
+
+**Files**
+- `app/Repositories/StockMovementRepository.php` (qty/currentStock as float)
+- `app/Services/StockService.php` (stockBefore/stockAfter and cache sum as float)
+
+**Impact**
+- Drift for fractional quantities (decimal:4) over time.
+- False mismatches in integrity checks / low stock alerts.
+
+**Fix**
+- Use string decimals + BCMath (or fixed-point integers: qty * 10000).
+- Keep DB calculations in DECIMAL and avoid float casting.
+
+---
+
+### V33-MED-02 — Branch ProductController may return branch_id=0 (unsafe fallback)
+
+**File**
+- `app/Http/Controllers/Branch/ProductController.php`
+
+**Problem**
+- `resolveBranchId()` returns 0 when branch context is missing.
+
+**Impact**
+- If middleware misconfigured or endpoint called incorrectly: you may create/read data with branch_id=0 silently.
+
+**Fix**
+- If branch context missing: `abort(400/422)` instead of returning 0.
+
+---
+
+### V33-MED-03 — StockTransfer history changed_by may be null
+
+**File**
+- `app/Models/StockTransfer.php`
+
+**Problem**
+- `recordStatusChange()` writes `changed_by => $userId` with no default.
+
+**Impact**
+- If any caller forgets to pass userId: audit history has null actor.
+
+**Fix**
+- Default to `actual_user_id()` when $userId is null OR enforce passing userId in all state transitions.
+
+---
+
+## LOW
+
+### V33-LOW-01 — QueryPerformanceService may reject valid SQL containing comments
+
+**File**
+- `app/Services/QueryPerformanceService.php`
+
+**Impact**
+- Internal tooling: some queries captured from logs can include comments/hints and may get rejected.
+
+**Fix**
+- Strip comments safely instead of rejecting, or only reject if source is untrusted.
+
+---
+
+### V33-LOW-02 — Integrity checker uses dynamic raw SQL
+
+**File**
+- `app/Console/Commands/CheckDatabaseIntegrity.php`
+
+**Impact**
+- Low risk now (inputs internal), لكن fragile لو اتوسع مستقبلاً.
+
+**Fix**
+- Whitelist tables and avoid concatenating raw fragments.
+
+---
+
+## Notes
+- This is static analysis. Runtime-only issues (config, infra, queue setup, db constraints) may exist but require execution/tests.
+- If you want, I can also produce a QA checklist for reproducing the HIGH/CRITICAL issues (especially concurrency & reporting correctness).
