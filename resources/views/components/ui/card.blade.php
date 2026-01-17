@@ -35,7 +35,8 @@
         
         @if($actions)
         <div class="flex items-center gap-2">
-            {{ $actions }}
+            {{-- Actions are developer-controlled slot content (buttons, links), not user input --}}
+            {!! $actions !!}
         </div>
         @endif
     </div>

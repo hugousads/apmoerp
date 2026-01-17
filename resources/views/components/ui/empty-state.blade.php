@@ -16,15 +16,23 @@ $iconMap = [
 ];
 
 $displayIcon = $iconMap[$type] ?? $icon;
-// Check if icon contains SVG markup - if so, sanitize it
-$isSvg = is_string($displayIcon) && str_contains($displayIcon, '<svg');
+// Check if icon appears to be SVG content - if so, always sanitize it
+// This handles both valid SVG and malicious content that might contain '<svg'
+$isSvg = is_string($displayIcon) && (
+    str_starts_with(trim($displayIcon), '<svg') || 
+    str_starts_with(trim($displayIcon), '<SVG') ||
+    str_contains($displayIcon, '<svg') ||
+    str_contains($displayIcon, '<?xml')
+);
 @endphp
 
 <div {{ $attributes->merge(['class' => 'flex flex-col items-center justify-center py-12 px-4']) }}>
     <div class="text-6xl mb-4">
         @if($isSvg)
+            {{-- Always sanitize SVG-like content to prevent XSS --}}
             {!! sanitize_svg_icon($displayIcon) !!}
         @else
+            {{-- Safe output for emoji or text --}}
             {{ $displayIcon }}
         @endif
     </div>

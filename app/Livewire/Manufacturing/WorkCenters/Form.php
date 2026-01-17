@@ -93,16 +93,14 @@ class Form extends Component
         $base = strtoupper(Str::slug(Str::limit($this->name, 10, ''), ''));
 
         if (empty($base)) {
-            // V32-HIGH-A03 FIX: Don't fallback to Branch::first() - use user's assigned branch or fail
+            // V32-HIGH-A03 FIX: Don't fallback to Branch::first() - use user's assigned branch
             $user = auth()->user();
             $branchId = $user?->branch_id;
 
-            // If no branch is assigned to user, code generation should fail gracefully
-            if (! $branchId) {
-                return $prefix.'-'.sprintf('%03d', random_int(1, 999));
-            }
-
-            $lastWc = WorkCenter::when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            // If no branch is assigned, the save() method will reject the request anyway
+            // Generate a temporary sequential code based on existing records
+            $lastWc = WorkCenter::query()
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->lockForUpdate()
                 ->orderBy('id', 'desc')
                 ->first();
@@ -115,6 +113,7 @@ class Form extends Component
         $counter = 1;
         $workCenterId = $this->workCenter?->id;
 
+        // Ensure uniqueness by checking existing codes and incrementing suffix
         while (WorkCenter::where('code', $code)->where('id', '!=', $workCenterId)->exists()) {
             $code = $prefix.'-'.$base.$counter;
             $counter++;

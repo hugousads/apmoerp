@@ -138,11 +138,21 @@ class QueryPerformanceService
     /**
      * Analyze query and suggest optimizations.
      *
-     * Only SELECT queries are allowed for EXPLAIN analysis.
-     * This method validates input to prevent SQL injection.
+     * SECURITY: This method is designed for internal use only with queries from
+     * trusted sources (e.g., query log entries, admin debugging tools).
+     * 
+     * Input validation includes:
+     * - Only SELECT statements are allowed (EXPLAIN requirement)
+     * - Dangerous patterns are blocked (UNION SELECT, INTO OUTFILE, etc.)
+     * 
+     * Note: EXPLAIN FORMAT=JSON syntax requires the query to be concatenated
+     * (not parameterized) as MySQL doesn't support binding the query itself.
+     * The validation above provides defense-in-depth against injection.
      *
-     * @param  string  $sql  SQL query (must be a SELECT statement)
+     * @param  string  $sql  SQL query (must be a SELECT statement from trusted source)
      * @return array<string, mixed>
+     * 
+     * @internal This method should only be called with queries from trusted sources
      */
     public function analyzeQuery(string $sql): array
     {
@@ -177,9 +187,8 @@ class QueryPerformanceService
                 }
             }
 
-            // Use DB::statement with prepared statement style for EXPLAIN
-            // Note: EXPLAIN FORMAT=JSON doesn't support parameter binding for the query itself,
-            // but we've validated the input above to only allow safe SELECT queries
+            // EXPLAIN FORMAT=JSON requires query concatenation (MySQL doesn't support binding)
+            // The validation above ensures only safe SELECT queries reach this point
             $explain = DB::select('EXPLAIN FORMAT=JSON '.$sql);
             $explainData = json_decode($explain[0]->EXPLAIN ?? '{}', true);
 
