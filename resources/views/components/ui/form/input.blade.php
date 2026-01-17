@@ -47,7 +47,7 @@
     <div class="relative">
         @if($icon && $iconPosition === 'left')
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            {!! $icon !!}
+            {!! sanitize_svg_icon($icon) !!}
         </div>
         @endif
 
@@ -58,7 +58,7 @@
             placeholder="{{ $placeholder }}"
             {{ $required ? 'required' : '' }}
             {{ $autocomplete ? "autocomplete=\"$autocomplete\"" : '' }}
-            @if($wireModel) {!! $wireDirective !!} @endif
+            @if($wireModel) {{ $wireDirective }} @endif
             @if($realTimeValidation && $wireModel) wire:blur="validateOnly('{{ $wireModel }}')" @endif
             {{ $attributes->merge([
                 'class' => 'block w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm min-h-[44px] text-sm sm:text-base transition-colors ' .
@@ -75,7 +75,7 @@
 
         @if($icon && $iconPosition === 'right')
         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            {!! $icon !!}
+            {!! sanitize_svg_icon($icon) !!}
         </div>
         @elseif($error)
         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">

@@ -138,12 +138,48 @@ class QueryPerformanceService
     /**
      * Analyze query and suggest optimizations.
      *
-     * @param  string  $sql  SQL query
+     * Only SELECT queries are allowed for EXPLAIN analysis.
+     * This method validates input to prevent SQL injection.
+     *
+     * @param  string  $sql  SQL query (must be a SELECT statement)
      * @return array<string, mixed>
      */
     public function analyzeQuery(string $sql): array
     {
         try {
+            // Normalize whitespace for validation
+            $normalizedSql = preg_replace('/\s+/', ' ', trim($sql));
+
+            // Only allow SELECT statements for EXPLAIN (security measure)
+            if (! preg_match('/^\s*SELECT\s/i', $normalizedSql)) {
+                return [
+                    'error' => 'Only SELECT queries can be analyzed with EXPLAIN.',
+                    'suggestions' => [],
+                ];
+            }
+
+            // Block dangerous patterns that could be used for SQL injection
+            $dangerousPatterns = [
+                '/;\s*(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE)/i',
+                '/UNION\s+(ALL\s+)?SELECT/i',
+                '/INTO\s+(OUTFILE|DUMPFILE)/i',
+                '/LOAD_FILE\s*\(/i',
+                '/BENCHMARK\s*\(/i',
+                '/SLEEP\s*\(/i',
+            ];
+
+            foreach ($dangerousPatterns as $pattern) {
+                if (preg_match($pattern, $normalizedSql)) {
+                    return [
+                        'error' => 'Query contains disallowed patterns.',
+                        'suggestions' => [],
+                    ];
+                }
+            }
+
+            // Use DB::statement with prepared statement style for EXPLAIN
+            // Note: EXPLAIN FORMAT=JSON doesn't support parameter binding for the query itself,
+            // but we've validated the input above to only allow safe SELECT queries
             $explain = DB::select('EXPLAIN FORMAT=JSON '.$sql);
             $explainData = json_decode($explain[0]->EXPLAIN ?? '{}', true);
 

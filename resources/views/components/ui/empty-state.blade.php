@@ -20,7 +20,7 @@ $displayIcon = $iconMap[$type] ?? $icon;
 
 <div {{ $attributes->merge(['class' => 'flex flex-col items-center justify-center py-12 px-4']) }}>
     <div class="text-6xl mb-4">
-        {!! $displayIcon !!}
+        {{ $displayIcon }}
     </div>
     
     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
