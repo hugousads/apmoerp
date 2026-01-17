@@ -76,7 +76,8 @@ class PayslipService
         if ($transportType === 'percentage') {
             $transportAmount = bcmul((string) $basicSalary, bcdiv((string) $transportValue, '100', 4), 2);
         } else {
-            $transportAmount = bcdiv((string) $transportValue, '1', 2);
+            // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
+            $transportAmount = bcround((string) $transportValue, 2);
         }
         if (bccomp($transportAmount, '0', 2) > 0) {
             $allowances['transport'] = (float) $transportAmount;
@@ -89,7 +90,8 @@ class PayslipService
         if ($housingType === 'percentage') {
             $housingAmount = bcmul((string) $basicSalary, bcdiv((string) $housingValue, '100', 4), 2);
         } else {
-            $housingAmount = bcdiv((string) $housingValue, '1', 2);
+            // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
+            $housingAmount = bcround((string) $housingValue, 2);
         }
         if (bccomp($housingAmount, '0', 2) > 0) {
             $allowances['housing'] = (float) $housingAmount;
@@ -99,7 +101,8 @@ class PayslipService
         // Meal allowance (fixed)
         $mealAllowance = (float) setting('hrm.meal_allowance', 0);
         if ($mealAllowance > 0) {
-            $mealAllowanceStr = bcdiv((string) $mealAllowance, '1', 2);
+            // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
+            $mealAllowanceStr = bcround((string) $mealAllowance, 2);
             $allowances['meal'] = (float) $mealAllowanceStr;
             $total = bcadd($total, $mealAllowanceStr, 2);
         }
@@ -157,7 +160,8 @@ class PayslipService
         // Additional fixed deductions from settings
         $healthInsurance = (float) setting('hrm.health_insurance_deduction', 0);
         if ($healthInsurance > 0) {
-            $healthInsuranceStr = bcdiv((string) $healthInsurance, '1', 2);
+            // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
+            $healthInsuranceStr = bcround((string) $healthInsurance, 2);
             $deductions['health_insurance'] = (float) $healthInsuranceStr;
             $total = bcadd($total, $healthInsuranceStr, 2);
         }
@@ -175,10 +179,10 @@ class PayslipService
      * Previously, the system would use the current salary for the entire month,
      * leading to overpayment when an employee gets promoted late in the month.
      *
-     * @param int $employeeId Employee ID
-     * @param string $period Period in Y-m format
-     * @param array|null $salaryChanges Optional array of salary changes in format:
-     *                   [['effective_date' => 'Y-m-d', 'new_salary' => float], ...]
+     * @param  int  $employeeId  Employee ID
+     * @param  string  $period  Period in Y-m format
+     * @param  array|null  $salaryChanges  Optional array of salary changes in format:
+     *                                     [['effective_date' => 'Y-m-d', 'new_salary' => float], ...]
      * @return array Payroll calculation result
      */
     public function calculatePayroll(int $employeeId, string $period, ?array $salaryChanges = null): array
@@ -219,12 +223,13 @@ class PayslipService
         return [
             'employee_id' => $employeeId,
             'period' => $period,
-            'basic' => (float) bcdiv((string) $basic, '1', 2),
-            'allowances' => (float) bcdiv((string) $allowances, '1', 2),
+            // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
+            'basic' => (float) bcround((string) $basic, 2),
+            'allowances' => (float) bcround((string) $allowances, 2),
             'allowance_breakdown' => $allowanceResult['breakdown'],
-            'deductions' => (float) bcdiv((string) $deductions, '1', 2),
+            'deductions' => (float) bcround((string) $deductions, 2),
             'deduction_breakdown' => $deductionResult['breakdown'],
-            'gross' => (float) bcdiv((string) $gross, '1', 2),
+            'gross' => (float) bcround((string) $gross, 2),
             'net' => (float) $net,
             'status' => 'draft',
         ];
@@ -236,11 +241,11 @@ class PayslipService
      * Example: If employee had salary 5000 for days 1-24 and got promoted to 10000 on day 25,
      * the calculation would be: (5000 * 24/30) + (10000 * 6/30) = 4000 + 2000 = 6000
      *
-     * @param \App\Models\HREmployee $employee The employee
-     * @param \Carbon\Carbon $periodStart Start of the payroll period
-     * @param \Carbon\Carbon $periodEnd End of the payroll period
-     * @param int $daysInMonth Total days in the month
-     * @param array|null $salaryChanges Explicit salary changes, or null to try auto-detection
+     * @param  \App\Models\HREmployee  $employee  The employee
+     * @param  \Carbon\Carbon  $periodStart  Start of the payroll period
+     * @param  \Carbon\Carbon  $periodEnd  End of the payroll period
+     * @param  int  $daysInMonth  Total days in the month
+     * @param  array|null  $salaryChanges  Explicit salary changes, or null to try auto-detection
      * @return float The pro-rata basic salary
      */
     protected function calculateProRataBasicSalary(
@@ -319,15 +324,16 @@ class PayslipService
             }
         }
 
-        return (float) bcdiv($proRataSalary, '1', 2);
+        // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
+        return (float) bcround($proRataSalary, 2);
     }
 
     /**
      * Attempt to get salary changes from activity log.
      *
-     * @param \App\Models\HREmployee $employee The employee
-     * @param \Carbon\Carbon $periodStart Start of the payroll period
-     * @param \Carbon\Carbon $periodEnd End of the payroll period
+     * @param  \App\Models\HREmployee  $employee  The employee
+     * @param  \Carbon\Carbon  $periodStart  Start of the payroll period
+     * @param  \Carbon\Carbon  $periodEnd  End of the payroll period
      * @return array Array of salary changes
      */
     protected function getSalaryChangesFromActivityLog(
