@@ -37,6 +37,8 @@ class SalesReturnService
     public function createReturn(array $data): SalesReturn
     {
         // Input validation
+        // V34-HIGH-01 FIX: Add 'distinct' validation to prevent duplicate sale_item_id which could
+        // allow over-returning items if the same sale_item_id is repeated across multiple lines
         $validated = validator($data, [
             'sale_id' => 'required|integer|exists:sales,id',
             'branch_id' => 'nullable|integer|exists:branches,id',
@@ -45,7 +47,7 @@ class SalesReturnService
             'notes' => 'nullable|string',
             'refund_method' => 'nullable|in:original,cash,bank_transfer,credit,store_credit',
             'items' => 'required|array|min:1',
-            'items.*.sale_item_id' => 'required|integer|exists:sale_items,id',
+            'items.*.sale_item_id' => 'required|integer|exists:sale_items,id|distinct',
             'items.*.qty' => 'required|numeric|min:0.001',
             'items.*.condition' => 'nullable|in:new,used,damaged,defective',
             'items.*.reason' => 'nullable|string|max:255',
@@ -331,9 +333,24 @@ class SalesReturnService
      * Restock returned items to inventory
      * V27-HIGH-02 FIX: Pass unit_cost to adjustStock for inventory valuation
      * V27-MED-05 FIX: Pass userId to adjustStock for CLI/queue context support
+     * V34-HIGH-02 FIX: Validate warehouse_id is present before restocking
+     * V34-HIGH-03 FIX: Add reference linkage for stock movements
      */
     protected function restockItems(SalesReturn $return, int $userId): void
     {
+        // V34-HIGH-02 FIX: Check if warehouse_id is present before attempting to restock
+        // If warehouse_id is null, skip restocking with a warning log
+        if ($return->warehouse_id === null) {
+            $hasItemsToRestock = $return->items->contains(fn ($item) => $item->shouldRestock());
+            if ($hasItemsToRestock) {
+                Log::warning('Sales return restocking skipped - no warehouse_id specified', [
+                    'return_id' => $return->id,
+                    'return_number' => $return->return_number,
+                ]);
+            }
+            return;
+        }
+
         foreach ($return->items as $item) {
             if (!$item->shouldRestock()) {
                 continue;
@@ -348,15 +365,16 @@ class SalesReturnService
             // Add stock back to inventory
             // V27-HIGH-02 FIX: Pass unit_cost for inventory valuation
             // V27-MED-05 FIX: Pass userId for CLI/queue context support
+            // V34-HIGH-03 FIX: Pass referenceId and referenceType for proper audit linkage
             $this->stockService->adjustStock(
                 productId: $item->product_id,
                 warehouseId: $return->warehouse_id,
                 quantity: $item->qty_returned,
                 type: StockMovement::TYPE_RETURN,
                 reference: "Return: {$return->return_number}",
-                notes: "Restocked from sales return - Condition: {$item->condition}",
-                referenceId: null,
-                referenceType: null,
+                notes: "Restocked from sales return (item: {$item->id}) - Condition: {$item->condition}",
+                referenceId: $return->id,
+                referenceType: SalesReturn::class,
                 unitCost: $unitCost,
                 userId: $userId
             );
