@@ -218,7 +218,7 @@ class ProductController extends Controller
         if (app()->has('req.branch_id')) {
             return (int) app('req.branch_id');
         }
-        
+
         // V33-MED-02 FIX: Abort instead of returning 0 when branch context is missing
         // This prevents silently creating/reading data with branch_id=0
         abort(400, 'Branch context is required for this operation');

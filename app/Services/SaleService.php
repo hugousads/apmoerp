@@ -176,19 +176,15 @@ class SaleService implements SaleServiceInterface
                             break; // Success, exit the retry loop
                         } catch (\Illuminate\Database\QueryException $e) {
                             // Check if it's a duplicate key error (MySQL: 1062, PostgreSQL: 23505, SQLite: 19)
-                            $isDuplicateKey = str_contains($e->getMessage(), 'Duplicate entry') 
+                            $isDuplicateKey = str_contains($e->getMessage(), 'Duplicate entry')
                                 || str_contains($e->getMessage(), 'UNIQUE constraint failed')
                                 || str_contains($e->getMessage(), '23505');
-                            
-                            if (!$isDuplicateKey || $attempt >= $maxRetries - 1) {
+
+                            if (! $isDuplicateKey || $attempt >= $maxRetries - 1) {
                                 throw $e; // Re-throw if not a duplicate key error or max retries reached
                             }
                             // Continue to next attempt
                         }
-                    }
-
-                    if ($note === null) {
-                        throw new \RuntimeException('Failed to generate unique reference number for return note after ' . $maxRetries . ' attempts');
                     }
 
                     // V25-CRIT-03 FIX: Create stock movements to track returned quantities
@@ -246,14 +242,14 @@ class SaleService implements SaleServiceInterface
                     // V33-HIGH-02 FIX: Properly track partial vs full returns
                     // Check if all items have been fully returned to determine correct status
                     $isFullyReturned = $this->isFullyReturned($sale, $returnedItemsData, $previouslyReturned);
-                    
+
                     if ($isFullyReturned) {
                         $sale->status = 'returned';
                     } else {
                         // Use 'partially_returned' for partial returns to maintain accurate reporting
                         $sale->status = 'partially_returned';
                     }
-                    
+
                     // V9-HIGH-03 FIX: Do NOT update paid_amount when refund is pending
                     // The paid_amount should only be updated when refund is actually completed
                     // This maintains accurate financial reporting and prevents incorrect balance calculations
@@ -304,10 +300,10 @@ class SaleService implements SaleServiceInterface
 
     /**
      * V33-HIGH-02 FIX: Check if all sale items have been fully returned
-     * 
-     * @param Sale $sale The sale being returned
-     * @param array $currentReturnItems Items being returned in this transaction
-     * @param array $previouslyReturned Previously returned quantities keyed by sale_item_id
+     *
+     * @param  Sale  $sale  The sale being returned
+     * @param  array  $currentReturnItems  Items being returned in this transaction
+     * @param  array  $previouslyReturned  Previously returned quantities keyed by sale_item_id
      * @return bool True if all items are fully returned after this return
      */
     protected function isFullyReturned(Sale $sale, array $currentReturnItems, array $previouslyReturned): bool
@@ -318,21 +314,21 @@ class SaleService implements SaleServiceInterface
             $saleItemId = $item['sale_item_id'];
             $currentReturnMap[$saleItemId] = ($currentReturnMap[$saleItemId] ?? 0) + (float) $item['qty'];
         }
-        
+
         // Check each sale item to see if it's fully returned
         foreach ($sale->items as $saleItem) {
             $soldQty = (float) $saleItem->quantity;
             $previouslyReturnedQty = $previouslyReturned[$saleItem->id] ?? 0;
             $currentlyReturningQty = $currentReturnMap[$saleItem->id] ?? 0;
             $totalReturnedQty = $previouslyReturnedQty + $currentlyReturningQty;
-            
+
             // If any item has unreturned quantity, the sale is not fully returned
             // Use bcmath for precision comparison
             if (bccomp((string) $totalReturnedQty, (string) $soldQty, 4) < 0) {
                 return false;
             }
         }
-        
+
         return true;
     }
 
