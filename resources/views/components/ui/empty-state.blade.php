@@ -16,11 +16,17 @@ $iconMap = [
 ];
 
 $displayIcon = $iconMap[$type] ?? $icon;
+// Check if icon contains SVG markup - if so, sanitize it
+$isSvg = is_string($displayIcon) && str_contains($displayIcon, '<svg');
 @endphp
 
 <div {{ $attributes->merge(['class' => 'flex flex-col items-center justify-center py-12 px-4']) }}>
     <div class="text-6xl mb-4">
-        {{ $displayIcon }}
+        @if($isSvg)
+            {!! sanitize_svg_icon($displayIcon) !!}
+        @else
+            {{ $displayIcon }}
+        @endif
     </div>
     
     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">

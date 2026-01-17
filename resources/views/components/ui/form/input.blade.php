@@ -58,7 +58,7 @@
             placeholder="{{ $placeholder }}"
             {{ $required ? 'required' : '' }}
             {{ $autocomplete ? "autocomplete=\"$autocomplete\"" : '' }}
-            @if($wireModel) {{ $wireDirective }} @endif
+            @if($wireModel) {!! $wireDirective !!} @endif
             @if($realTimeValidation && $wireModel) wire:blur="validateOnly('{{ $wireModel }}')" @endif
             {{ $attributes->merge([
                 'class' => 'block w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm min-h-[44px] text-sm sm:text-base transition-colors ' .
