@@ -257,17 +257,14 @@ class CostingService
     }
 
     /**
-     * Get total inventory value including goods in transit.
-     *
-     * BUG FIX: Addresses the "ghost inventory" issue where goods in transit
-     * between warehouses were not included in financial reports, causing
-     * temporary drops in asset value during transfers.
+     * Get total inventory value (optionally including goods in transit).
      *
      * @param  int|null  $branchId  Branch ID to filter by
      * @param  int|null  $warehouseId  Warehouse ID to filter by (null for all)
+     * @param  bool  $includeTransit  Whether to include in-transit inventory in totals
      * @return array ['warehouse_value' => float, 'transit_value' => float, 'total_value' => float]
      */
-    public function getTotalInventoryValue(?int $branchId = null, ?int $warehouseId = null): array
+    public function getTotalInventoryValue(?int $branchId = null, ?int $warehouseId = null, bool $includeTransit = false): array
     {
         // Calculate warehouse inventory value
         $warehouseQuery = InventoryBatch::active();
@@ -289,12 +286,12 @@ class CostingService
         $warehouseValue = (string) ($warehouseStats->total_value ?? '0');
         $warehouseQuantity = (string) ($warehouseStats->total_quantity ?? '0');
 
-        // BUG FIX: Include inventory in transit
+        // Optionally include inventory in transit to avoid mismatched valuations
         $transitValue = '0';
         $transitQuantity = '0';
 
         // Check if InventoryTransit model exists (it may be in StockTransferService)
-        if (class_exists(\App\Models\InventoryTransit::class)) {
+        if ($includeTransit && class_exists(\App\Models\InventoryTransit::class)) {
             $transitQuery = \App\Models\InventoryTransit::where('status', 'in_transit');
 
             if ($branchId !== null) {
