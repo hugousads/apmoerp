@@ -152,7 +152,8 @@ class CurrencyService
 
                 // Set created_by only for newly created rates
                 if ($currencyRate->wasRecentlyCreated) {
-                    $currencyRate->created_by = auth()->id();
+                    // V33-CRIT-02 FIX: Use actual_user_id() for correct audit attribution during impersonation
+                    $currencyRate->created_by = actual_user_id();
                     $currencyRate->save();
                 }
 

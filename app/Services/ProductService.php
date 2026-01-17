@@ -247,7 +247,8 @@ class ProductService implements ProductServiceInterface
                         'module_id' => $module->id,
                         'category_id' => $data['category_id'] ?? null,
                         'unit_id' => $data['unit_id'] ?? null,
-                        'created_by' => auth()->id(),
+                        // V33-CRIT-02 FIX: Use actual_user_id() for correct audit attribution during impersonation
+                        'created_by' => actual_user_id(),
                     ];
 
                     // Handle thumbnail upload if provided
@@ -312,7 +313,8 @@ class ProductService implements ProductServiceInterface
                         'type' => $data['type'] ?? $product->type,
                         'category_id' => $data['category_id'] ?? $product->category_id,
                         'unit_id' => $data['unit_id'] ?? $product->unit_id,
-                        'updated_by' => auth()->id(),
+                        // V33-CRIT-02 FIX: Use actual_user_id() for correct audit attribution during impersonation
+                        'updated_by' => actual_user_id(),
                     ];
 
                     // Handle thumbnail update
