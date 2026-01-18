@@ -46,12 +46,14 @@ class OfflineSales extends Component
             $query->where('branch_id', $this->branchId);
         }
 
+        // V37-HIGH-02 FIX: Use sale_date (business date) instead of created_at for accurate period filtering
+        // For offline sales, created_at represents sync time, not actual sale time
         if ($this->dateFrom) {
-            $query->whereDate('created_at', '>=', $this->dateFrom);
+            $query->whereDate('sale_date', '>=', $this->dateFrom);
         }
 
         if ($this->dateTo) {
-            $query->whereDate('created_at', '<=', $this->dateTo);
+            $query->whereDate('sale_date', '<=', $this->dateTo);
         }
 
         $sales = $query->latest()->paginate(25);
