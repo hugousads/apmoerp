@@ -9,13 +9,19 @@ use App\Models\StoreToken;
 use App\Services\BranchContextManager;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthenticateStoreToken
 {
+    /**
+     * Deprecation warning message for insecure token methods.
+     */
+    private const DEPRECATION_WARNING = 'API token via query/body is deprecated. Use Authorization: Bearer header.';
+
     public function handle(Request $request, Closure $next, string ...$abilities): Response
     {
-        $token = $this->getTokenFromRequest($request);
+        [$token, $tokenSource] = $this->getTokenFromRequest($request);
 
         if (! $token) {
             return response()->json([
@@ -81,12 +87,35 @@ class AuthenticateStoreToken
 
         $storeToken->touchLastUsed();
 
-        $request->merge([
-            'store' => $store,
-            'store_token' => $storeToken,
-        ]);
+        // Set store context before passing to next middleware
+        $this->setStoreContext($request, $store, $storeToken);
 
-        return $next($request);
+        // Process request through remaining middleware
+        $response = $next($request);
+
+        // V37-HIGH-03 FIX: Log deprecation warning when token is passed via query/body
+        // Tokens in query strings can leak via logs, referrers, and browser history.
+        // Prefer Authorization: Bearer header for secure token transmission.
+        if ($tokenSource !== 'header') {
+            // Rate limit deprecation logging to prevent log flooding attacks
+            // Log at most once per store per minute using cache
+            $cacheKey = "deprecated_token_log:{$store->id}";
+            if (! cache()->has($cacheKey)) {
+                // Log minimal information to avoid exposing sensitive data
+                Log::warning('Deprecated API token method used', [
+                    'token_source' => $tokenSource,
+                    'endpoint' => $request->path(),
+                ]);
+                cache()->put($cacheKey, true, 60); // Cache for 60 seconds
+            }
+
+            // V37-HIGH-03 FIX: Add deprecation header to response to inform clients
+            if ($response instanceof Response) {
+                $response->headers->set('X-Deprecation-Warning', self::DEPRECATION_WARNING);
+            }
+        }
+
+        return $response;
     }
 
     /**
@@ -98,14 +127,54 @@ class AuthenticateStoreToken
         BranchContextManager::clearBranchContext();
     }
 
-    protected function getTokenFromRequest(Request $request): ?string
+    /**
+     * Set store and token context on the request.
+     *
+     * V37-CODE-REVIEW: Extracted to avoid code duplication between
+     * secure and deprecated token handling paths.
+     */
+    protected function setStoreContext(Request $request, Store $store, StoreToken $storeToken): void
     {
+        $request->merge([
+            'store' => $store,
+            'store_token' => $storeToken,
+        ]);
+    }
+
+    /**
+     * Extract API token from the request.
+     *
+     * SECURITY (V37-HIGH-03): Token extraction priority:
+     * 1. Authorization: Bearer header (PREFERRED - most secure)
+     * 2. Query parameter 'api_token' (DEPRECATED - leaks via logs/referrers/history)
+     * 3. Request body 'api_token' (DEPRECATED - less exposure but still not ideal)
+     *
+     * When tokens are passed via query/body, a deprecation warning is logged
+     * and a warning header is returned to inform clients to migrate.
+     *
+     * @return array{0: string|null, 1: string} Tuple of [token, source]
+     */
+    protected function getTokenFromRequest(Request $request): array
+    {
+        // Preferred: Authorization header (secure, not logged by default)
         $authHeader = $request->header('Authorization');
 
         if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
-            return substr($authHeader, 7);
+            return [substr($authHeader, 7), 'header'];
         }
 
-        return $request->query('api_token') ?? $request->input('api_token');
+        // Deprecated: Query parameter (can leak via logs, referrers, browser history)
+        $queryToken = $request->query('api_token');
+        if ($queryToken) {
+            return [$queryToken, 'query'];
+        }
+
+        // Deprecated: Request body (less exposure than query, but still not ideal)
+        $bodyToken = $request->input('api_token');
+        if ($bodyToken) {
+            return [$bodyToken, 'body'];
+        }
+
+        return [null, 'none'];
     }
 }
