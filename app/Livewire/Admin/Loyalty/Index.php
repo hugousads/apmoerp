@@ -56,9 +56,10 @@ class Index extends Component
     {
         $settings = LoyaltySetting::getForBranch(Auth::user()?->branch_id);
         if ($settings) {
-            $this->points_per_amount = (float) $settings->points_per_amount;
-            $this->amount_per_point = (float) $settings->amount_per_point;
-            $this->redemption_rate = (float) $settings->redemption_rate;
+            // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+            $this->points_per_amount = decimal_float($settings->points_per_amount);
+            $this->amount_per_point = decimal_float($settings->amount_per_point);
+            $this->redemption_rate = decimal_float($settings->redemption_rate);
             $this->min_points_redeem = (int) $settings->min_points_redeem;
             $this->points_expiry_days = $settings->points_expiry_days;
             $this->is_active = $settings->is_active;

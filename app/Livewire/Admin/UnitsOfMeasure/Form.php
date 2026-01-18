@@ -60,7 +60,8 @@ class Form extends Component
         $this->symbol = $unit->symbol;
         $this->type = $unit->type;
         $this->baseUnitId = $unit->base_unit_id;
-        $this->conversionFactor = (float) $unit->conversion_factor;
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        $this->conversionFactor = decimal_float($unit->conversion_factor, 4);
         $this->decimalPlaces = $unit->decimal_places;
         $this->isBaseUnit = $unit->is_base_unit;
         $this->isActive = $unit->is_active;

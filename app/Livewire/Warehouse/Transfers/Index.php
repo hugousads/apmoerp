@@ -88,7 +88,8 @@ class Index extends Component
             $transfer->load('items.product');
 
             foreach ($transfer->items as $item) {
-                $qty = (float) $item->quantity;
+                // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                $qty = decimal_float($item->quantity);
 
                 // Skip items with zero or negative quantity
                 if ($qty <= 0) {

@@ -70,7 +70,8 @@ class Form extends Component
         $this->bom_id = $this->productionOrder->bom_id;
         $this->product_id = $this->productionOrder->product_id;
         $this->warehouse_id = $this->productionOrder->warehouse_id;
-        $this->quantity_planned = (float) $this->productionOrder->quantity_planned;
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        $this->quantity_planned = decimal_float($this->productionOrder->quantity_planned);
         $this->status = $this->productionOrder->status;
         $this->priority = $this->productionOrder->priority;
         $this->planned_start_date = $this->productionOrder->planned_start_date?->format('Y-m-d');

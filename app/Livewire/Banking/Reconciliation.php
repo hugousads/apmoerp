@@ -301,7 +301,8 @@ class Reconciliation extends Component
         $negativeThreshold = '-'.self::TOLERANCE_THRESHOLD;
         if (bccomp($this->difference, self::TOLERANCE_THRESHOLD, 4) > 0 || bccomp($this->difference, $negativeThreshold, 4) < 0) {
             session()->flash('warning', __('There is still a difference of :amount. Are you sure you want to complete?', [
-                'amount' => number_format((float) $this->difference, 2),
+                // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                'amount' => number_format(decimal_float($this->difference), 2),
             ]));
         }
 
