@@ -448,9 +448,10 @@ class POSService implements POSServiceInterface
                 // Get all sales for the branch on the given date
                 // V24-HIGH-06 FIX: Use sale_date instead of created_at for proper business date filtering
                 // This ensures backdated or imported sales are counted on their actual sale date
+                // V35-MED-06 FIX: Include 'draft' in exclusion list for consistency
                 $salesQuery = Sale::where('branch_id', $branch->id)
                     ->whereDate('sale_date', $date)
-                    ->whereNotIn('status', ['cancelled', 'void', 'returned', 'refunded']);
+                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'returned', 'refunded']);
 
                 $salesCount = $salesQuery->count();
 
@@ -465,10 +466,11 @@ class POSService implements POSServiceInterface
 
                 // Get receipts count from payments
                 // V24-HIGH-06 FIX: Use sale_date instead of created_at
+                // V35-MED-06 FIX: Include 'draft' in exclusion list for consistency
                 $receiptsCount = SalePayment::whereIn('sale_id',
                     Sale::where('branch_id', $branch->id)
                         ->whereDate('sale_date', $date)
-                        ->whereNotIn('status', ['cancelled', 'void', 'returned', 'refunded'])
+                        ->whereNotIn('status', ['draft', 'cancelled', 'void', 'returned', 'refunded'])
                         ->pluck('id')
                 )->count();
 
