@@ -1,8 +1,8 @@
 <?php
 
 namespace App\Services\Reports;
-use App\Enums\SaleStatus;
 
+use App\Enums\SaleStatus;
 use App\Models\Product;
 use App\Services\DatabaseCompatibilityService;
 use Carbon\Carbon;

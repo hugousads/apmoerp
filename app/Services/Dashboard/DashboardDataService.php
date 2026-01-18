@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
+use App\Enums\SaleStatus;
 use App\Models\DashboardWidget;
 use App\Models\WidgetDataCache;
 use Illuminate\Support\Facades\DB;
