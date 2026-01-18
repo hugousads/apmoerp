@@ -53,10 +53,10 @@ class DatabaseCompatibilityService
 
     /**
      * Regex pattern for valid JSON path expressions.
-     * Allows: Optional $ prefix, property names, and array indices.
+     * Allows: Optional $. prefix, property names, and array indices.
      * Examples: "key", "$.key", "user.name", "items[0]", "$.data.items[0].name"
      */
-    private const JSON_PATH_PATTERN = '/^\$?[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*|\[\d+\])*$/';
+    private const JSON_PATH_PATTERN = '/^(\$\.)?[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*|\[\d+\])*$/';
 
     /**
      * Whitelist of safe SQL expressions that can be used as date values.
