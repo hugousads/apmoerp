@@ -196,23 +196,31 @@ class SalesAnalytics extends Component
         ];
     }
 
+    /**
+     * Load sales trend data
+     * V35-HIGH-02 FIX: Use sale_date instead of created_at for accurate period filtering
+     * V35-MED-06 FIX: Exclude non-revenue statuses for consistent financial reporting
+     */
     protected function loadSalesTrend(): void
     {
         $days = Carbon::parse($this->dateFrom)->diffInDays(Carbon::parse($this->dateTo));
         $groupBy = $days > 60 ? 'month' : ($days > 14 ? 'week' : 'day');
 
-        // Use database-portable date truncation
+        // V35-HIGH-02 FIX: Use sale_date for database-portable date truncation
         $dateFormat = match ($groupBy) {
-            'month' => $this->dbService->monthTruncateExpression('created_at'),
-            'week' => $this->dbService->weekTruncateExpression('created_at'),
-            default => $this->dbService->dateExpression('created_at'),
+            'month' => $this->dbService->monthTruncateExpression('sale_date'),
+            'week' => $this->dbService->weekTruncateExpression('sale_date'),
+            default => $this->dbService->dateExpression('sale_date'),
         };
 
+        // V35-HIGH-02 FIX: Use sale_date instead of created_at for filtering
+        // V35-MED-06 FIX: Exclude non-revenue statuses
         $query = Sale::query()
             ->selectRaw("{$dateFormat} as period")
             ->selectRaw('SUM(total_amount) as revenue')
             ->selectRaw('COUNT(*) as orders')
-            ->whereBetween('created_at', [$this->dateFrom.' 00:00:00', $this->dateTo.' 23:59:59']);
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereBetween('sale_date', [$this->dateFrom, $this->dateTo]);
 
         if (! $this->isAdmin && $this->branchId) {
             $query->where('branch_id', $this->branchId);

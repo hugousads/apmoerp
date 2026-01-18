@@ -38,12 +38,14 @@ class AdvancedAnalyticsService
     /**
      * Get sales metrics with advanced calculations
      * FIX N-03: Use total_amount instead of total
+     * V35-HIGH-02 FIX: Use sale_date instead of created_at for accurate period filtering
+     * V35-MED-06 FIX: Exclude non-revenue statuses (already filters to completed)
      */
     protected function getSalesMetrics(?int $branchId, array $dateRange): array
     {
         $query = Sale::query()
             ->where('status', 'completed')
-            ->whereBetween('created_at', $dateRange);
+            ->whereBetween('sale_date', $dateRange);
 
         if ($branchId) {
             $query->where('branch_id', $branchId);
