@@ -157,7 +157,8 @@ class DiscountService implements DiscountServiceInterface
         $totalDiscountAmount = 0.0;
 
         foreach ($discounts as $discount) {
-            $value = (float) ($discount['value'] ?? 0);
+            // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+            $value = decimal_float($discount['value'] ?? 0);
             $isPercent = (bool) ($discount['is_percent'] ?? true);
 
             if ($isPercent) {

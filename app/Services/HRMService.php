@@ -106,19 +106,20 @@ class HRMService implements HRMServiceInterface
                             continue;
                         }
 
-                        $basic = (float) $emp->salary;
+                        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                        $basic = decimal_float($emp->salary);
 
                         $extra = $emp->extra_attributes ?? [];
-                        $housingAllowance = (float) ($extra['housing_allowance'] ?? 0);
-                        $transportAllowance = (float) ($extra['transport_allowance'] ?? 0);
-                        $otherAllowance = (float) ($extra['other_allowance'] ?? 0);
+                        $housingAllowance = decimal_float($extra['housing_allowance'] ?? 0);
+                        $transportAllowance = decimal_float($extra['transport_allowance'] ?? 0);
+                        $otherAllowance = decimal_float($extra['other_allowance'] ?? 0);
                         $totalAllowances = $housingAllowance + $transportAllowance + $otherAllowance;
 
                         $grossSalary = $basic + $totalAllowances;
                         $socialInsurance = $this->calculateSocialInsurance($grossSalary);
                         $tax = $this->calculateTax($grossSalary - $socialInsurance);
                         $absenceDeduction = $this->calculateAbsenceDeduction($emp, "{$year}-{$month}");
-                        $loanDeduction = (float) ($extra['loan_deduction'] ?? 0);
+                        $loanDeduction = decimal_float($extra['loan_deduction'] ?? 0);
                         $totalDeductions = $socialInsurance + $tax + $absenceDeduction + $loanDeduction;
 
                         $net = $grossSalary - $totalDeductions;
@@ -164,7 +165,8 @@ class HRMService implements HRMServiceInterface
         $insurance = bcmul((string) $insurableSalary, (string) $rate, 4);
 
         // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
-        return (float) bcround($insurance, 2);
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        return decimal_float(bcround($insurance, 2));
     }
 
     protected function calculateTax(float $taxableIncome): float
@@ -206,7 +208,8 @@ class HRMService implements HRMServiceInterface
         $monthlyTax = bcdiv($annualTaxString, '12', 4);
 
         // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
-        return (float) bcround($monthlyTax, 2);
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        return decimal_float(bcround($monthlyTax, 2));
     }
 
     protected function calculateAbsenceDeduction(HREmployee $emp, string $period): float
@@ -230,10 +233,11 @@ class HRMService implements HRMServiceInterface
                 return 0;
             }
 
-            $dailyRate = (float) $emp->salary / 30;
+            // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+            $dailyRate = decimal_float($emp->salary) / 30;
 
             // Use bcmath for precise absence deduction
-            return (float) bcmul((string) $dailyRate, (string) $absenceDays, 2);
+            return decimal_float(bcmul((string) $dailyRate, (string) $absenceDays, 2));
         } catch (\Exception $e) {
             Log::warning('Failed to calculate absence deduction', [
                 'employee_id' => $emp->getKey(),
