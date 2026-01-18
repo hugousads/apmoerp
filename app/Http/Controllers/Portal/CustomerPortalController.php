@@ -77,7 +77,7 @@ class CustomerPortalController extends Controller
             'total_orders' => Sale::where('customer_id', $customer->id)->count(),
             // V35-MED-06 FIX: Exclude all non-revenue statuses
             'total_spent' => Sale::where('customer_id', $customer->id)
-                ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+                ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                 ->sum('total_amount'),
             'pending_orders' => Sale::where('customer_id', $customer->id)
                 ->where('status', 'pending')

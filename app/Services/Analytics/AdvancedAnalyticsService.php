@@ -292,7 +292,7 @@ class AdvancedAnalyticsService
                 // V35-HIGH-02 FIX: Use sale_date for customer activity analysis
                 // V35-MED-06 FIX: Exclude non-revenue statuses
                 $q->where('sale_date', '>', now()->subMonths(6))
-                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                     ->orderBy('sale_date', 'desc');
             }])
             ->get();

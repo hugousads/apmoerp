@@ -57,7 +57,7 @@ class ClosePosDayJob implements ShouldQueue
             $sales = \App\Models\Sale::query()
                 ->whereDate('sale_date', $date)
                 ->where('branch_id', $branchId)
-                ->whereNotIn('status', ['draft', 'cancelled', 'void', 'returned', 'refunded'])
+                ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                 ->get(['total_amount', 'paid_amount']);
 
             // Use bcmath for precise financial totals

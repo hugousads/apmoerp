@@ -47,7 +47,7 @@ class CustomerBehaviorService
                         DB::raw('AVG(total_amount) as avg_order_value')
                     )
                     ->whereNotNull('customer_id')
-                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                     ->where('sale_date', '>=', $startDate);
 
                 if ($branchId) {
@@ -148,7 +148,7 @@ class CustomerBehaviorService
                         DB::raw('MAX(sale_date) as last_purchase')
                     )
                     ->whereNotNull('customer_id')
-                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                     ->where('sale_date', '>=', now()->subYear());
 
                 if ($branchId) {
@@ -212,7 +212,7 @@ class CustomerBehaviorService
                     )
                     ->whereHas('sale', function ($q) use ($customerId) {
                         $q->where('customer_id', $customerId)
-                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     })
                     ->whereNotNull('product_id')
                     ->groupBy('product_id')
@@ -256,17 +256,17 @@ class CustomerBehaviorService
                 $query = Customer::query()
                     ->whereHas('sales', function ($q) use ($activeThreshold) {
                         $q->where('sale_date', '<', $activeThreshold)
-                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     })
                     ->whereDoesntHave('sales', function ($q) use ($activeThreshold) {
                         $q->where('sale_date', '>=', $activeThreshold)
-                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     })
                     ->withCount(['sales' => function ($q) {
-                        $q->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                        $q->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     }])
                     ->withSum(['sales' => function ($q) {
-                        $q->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                        $q->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     }], 'total_amount');
 
                 if ($branchId) {
@@ -279,7 +279,7 @@ class CustomerBehaviorService
                     ->map(function ($customer) {
                         // V35-HIGH-02 FIX: Use sale_date for last purchase date
                         $lastSale = $customer->sales()
-                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                             ->orderByDesc('sale_date')
                             ->first();
 
@@ -313,10 +313,10 @@ class CustomerBehaviorService
                 // V35-MED-06 FIX: Exclude all non-revenue statuses
                 $query = Customer::query()
                     ->withCount(['sales' => function ($q) {
-                        $q->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                        $q->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     }])
                     ->withSum(['sales' => function ($q) {
-                        $q->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                        $q->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     }], 'total_amount')
                     ->having('sales_count', '>', 0);
 
@@ -334,7 +334,7 @@ class CustomerBehaviorService
                     'customers' => $customers->map(function ($c) use ($totalCLV) {
                         // V35-HIGH-02 FIX: Use sale_date for customer tenure calculation
                         $firstSale = $c->sales()
-                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                             ->orderBy('sale_date')
                             ->first();
                         $monthsActive = $firstSale ? max(1, now()->diffInMonths($firstSale->sale_date)) : 1;

@@ -341,7 +341,7 @@ class POSService implements POSServiceInterface
                 $salesQuery = Sale::where('branch_id', $session->branch_id)
                     ->where('created_by', $session->user_id)
                     ->where('created_at', '>=', $session->opened_at)
-                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
 
                 $totalSales = (float) $salesQuery->sum('total_amount');
                 $totalTransactions = $salesQuery->count();
@@ -451,7 +451,7 @@ class POSService implements POSServiceInterface
                 // V35-MED-06 FIX: Include 'draft' in exclusion list for consistency
                 $salesQuery = Sale::where('branch_id', $branch->id)
                     ->whereDate('sale_date', $date)
-                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'returned', 'refunded']);
+                    ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
 
                 $salesCount = $salesQuery->count();
 
@@ -470,7 +470,7 @@ class POSService implements POSServiceInterface
                 $receiptsCount = SalePayment::whereIn('sale_id',
                     Sale::where('branch_id', $branch->id)
                         ->whereDate('sale_date', $date)
-                        ->whereNotIn('status', ['draft', 'cancelled', 'void', 'returned', 'refunded'])
+                        ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                         ->pluck('id')
                 )->count();
 

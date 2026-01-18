@@ -15,8 +15,8 @@
         // V35-MED-06 FIX: Exclude non-revenue statuses
         $salesStats = [
             'count' => class_exists($saleModel) ? $saleModel::count() : 0,
-            'today' => class_exists($saleModel) ? $saleModel::whereDate('sale_date', $today)->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])->sum('total_amount') : 0,
-            'total' => class_exists($saleModel) ? $saleModel::whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])->sum('total_amount') : 0,
+            'today' => class_exists($saleModel) ? $saleModel::whereDate('sale_date', $today)->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])->sum('total_amount') : 0,
+            'total' => class_exists($saleModel) ? $saleModel::whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])->sum('total_amount') : 0,
         ];
 
         $employeeModel = '\\App\\Models\\HREmployee';
@@ -45,7 +45,7 @@
         $salesSeries = class_exists($saleModel)
             ? $saleModel::selectRaw('DATE(sale_date) as day, SUM(total_amount) as total')
                 ->whereDate('sale_date', '>=', $from)
-                ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+                ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                 ->groupBy('day')
                 ->orderBy('day')
                 ->get()

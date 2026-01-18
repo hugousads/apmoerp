@@ -75,7 +75,7 @@ class DashboardDataService
         $query = DB::table('sales')
             ->whereDate('sale_date', today())
             ->whereNull('deleted_at')
-            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
 
         if ($branchId) {
             $query->where('branch_id', $branchId);
@@ -103,7 +103,7 @@ class DashboardDataService
         $query = DB::table('sales')
             ->whereBetween('sale_date', [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()])
             ->whereNull('deleted_at')
-            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
 
         if ($branchId) {
             $query->where('branch_id', $branchId);
@@ -127,7 +127,7 @@ class DashboardDataService
             ->whereYear('sale_date', now()->year)
             ->whereMonth('sale_date', now()->month)
             ->whereNull('deleted_at')
-            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
 
         if ($branchId) {
             $query->where('branch_id', $branchId);
@@ -157,7 +157,7 @@ class DashboardDataService
                 DB::raw('COALESCE(SUM(sale_items.line_total), 0) as total_revenue')
             )
             ->whereNull('sales.deleted_at')
-            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sales.sale_date', [now()->subDays(30)->toDateString(), now()->toDateString()])
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('total_quantity')
@@ -189,7 +189,7 @@ class DashboardDataService
                 DB::raw('COALESCE(SUM(sales.total_amount), 0) as total_spent')
             )
             ->whereNull('sales.deleted_at')
-            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sales.sale_date', [now()->subDays(30)->toDateString(), now()->toDateString()])
             ->groupBy('customers.id', 'customers.name')
             ->orderByDesc('total_spent')

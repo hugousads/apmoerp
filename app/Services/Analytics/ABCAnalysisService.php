@@ -62,7 +62,7 @@ class ABCAnalysisService
                             $q->where('branch_id', $branchId);
                         }
                         $q->whereBetween('sale_date', [$startDate, $endDate])
-                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     })
                     ->whereNotNull('product_id')
                     ->groupBy('product_id')
@@ -176,7 +176,7 @@ class ABCAnalysisService
                             $q->where('branch_id', $branchId);
                         }
                         $q->whereBetween('sale_date', [$startDate, $endDate])
-                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded']);
+                            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded']);
                     })
                     ->whereNotNull('product_id')
                     ->groupBy('product_id')

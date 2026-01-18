@@ -260,7 +260,7 @@ class CustomizableDashboard extends Component
             $thisMonthSales = \App\Models\Sale::where('branch_id', $branchId)
                 ->whereMonth('sale_date', now()->month)
                 ->whereYear('sale_date', now()->year)
-                ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+                ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
                 ->whereHas('items', function ($q) use ($module) {
                     $q->whereHas('product', function ($pq) use ($module) {
                         $pq->where('module_id', $module->id);

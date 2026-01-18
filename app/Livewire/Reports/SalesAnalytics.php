@@ -127,7 +127,7 @@ class SalesAnalytics extends Component
     protected function scopedQuery()
     {
         $query = Sale::query()
-            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sale_date', [$this->dateFrom, $this->dateTo]);
 
         if (! $this->isAdmin && $this->branchId) {
@@ -162,7 +162,7 @@ class SalesAnalytics extends Component
 
         // V35-HIGH-02 FIX: Use sale_date instead of created_at for previous period comparison
         $prevPeriodQuery = Sale::query()
-            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sale_date', [
                 Carbon::parse($this->dateFrom)->subDays(Carbon::parse($this->dateFrom)->diffInDays(Carbon::parse($this->dateTo)) + 1)->toDateString(),
                 Carbon::parse($this->dateFrom)->subDay()->toDateString(),
@@ -219,7 +219,7 @@ class SalesAnalytics extends Component
             ->selectRaw("{$dateFormat} as period")
             ->selectRaw('SUM(total_amount) as revenue')
             ->selectRaw('COUNT(*) as orders')
-            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sale_date', [$this->dateFrom, $this->dateTo]);
 
         if (! $this->isAdmin && $this->branchId) {
@@ -265,7 +265,7 @@ class SalesAnalytics extends Component
             ->selectRaw('SUM(sale_items.quantity) as total_qty')
             ->selectRaw('SUM(sale_items.line_total) as total_revenue')
             ->whereNull('sales.deleted_at')
-            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sales.sale_date', [$this->dateFrom, $this->dateTo]);
 
         if (! $this->isAdmin && $this->branchId) {
@@ -304,7 +304,7 @@ class SalesAnalytics extends Component
             ->selectRaw('COUNT(sales.id) as total_orders')
             ->selectRaw('SUM(sales.total_amount) as total_spent')
             ->whereNull('sales.deleted_at')
-            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sales.sale_date', [$this->dateFrom, $this->dateTo])
             ->whereNotNull('sales.customer_id');
 
@@ -340,7 +340,7 @@ class SalesAnalytics extends Component
             ->selectRaw('COUNT(*) as count')
             ->selectRaw('SUM(sale_payments.amount) as total')
             ->whereNull('sales.deleted_at')
-            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sales.sale_date', [$this->dateFrom, $this->dateTo]);
 
         if (! $this->isAdmin && $this->branchId) {
@@ -376,7 +376,7 @@ class SalesAnalytics extends Component
         $query = Sale::query()
             ->selectRaw("{$hourExpr} as hour")
             ->selectRaw('COUNT(*) as count')
-            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sale_date', [$this->dateFrom, $this->dateTo]);
 
         if (! $this->isAdmin && $this->branchId) {
@@ -415,7 +415,7 @@ class SalesAnalytics extends Component
             ->selectRaw('SUM(sale_items.quantity) as total_qty')
             ->selectRaw('SUM(sale_items.line_total) as total_revenue')
             ->whereNull('sales.deleted_at')
-            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'refunded'])
+            ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereBetween('sales.sale_date', [$this->dateFrom, $this->dateTo]);
 
         if (! $this->isAdmin && $this->branchId) {
