@@ -479,6 +479,7 @@ class AdvancedAnalyticsService
     /**
      * Get top selling products
      * V35-HIGH-02 FIX: Use sale_date for period filtering
+     * CODE-REVIEW FIX: Use eager loading to avoid N+1 query problem
      */
     protected function getTopProducts(?int $branchId, array $dateRange, int $limit): array
     {
@@ -489,6 +490,7 @@ class AdvancedAnalyticsService
                 DB::raw('SUM(line_total) as total_revenue'),
                 DB::raw('COUNT(DISTINCT sale_id) as sales_count')
             )
+            ->with('product') // CODE-REVIEW FIX: Eager load products to avoid N+1
             ->whereHas('sale', function ($q) use ($branchId, $dateRange) {
                 if ($branchId) {
                     $q->where('branch_id', $branchId);
@@ -503,16 +505,15 @@ class AdvancedAnalyticsService
             ->get();
 
         return $query->map(function ($item) {
-            $product = Product::find($item->product_id);
             return [
                 'id' => $item->product_id,
-                'name' => $product?->name ?? 'Unknown',
-                'sku' => $product?->sku,
+                'name' => $item->product?->name ?? 'Unknown',
+                'sku' => $item->product?->sku,
                 'total_qty' => $item->total_qty,
                 'total_revenue' => round($item->total_revenue, 2),
                 'sales_count' => $item->sales_count,
-                'price' => $product?->default_price ?? 0,
-                'stock' => $product?->stock_quantity ?? 0,
+                'price' => $item->product?->default_price ?? 0,
+                'stock' => $item->product?->stock_quantity ?? 0,
             ];
         })->toArray();
     }
@@ -520,6 +521,7 @@ class AdvancedAnalyticsService
     /**
      * Get slow moving products
      * V35-HIGH-02 FIX: Use sale_date for period filtering
+     * CODE-REVIEW FIX: Use eager loading to avoid N+1 query problem
      */
     protected function getSlowMovingProducts(?int $branchId, array $dateRange, int $limit): array
     {
@@ -529,6 +531,7 @@ class AdvancedAnalyticsService
                 DB::raw('SUM(quantity) as total_qty'),
                 DB::raw('MAX(sales.sale_date) as last_sale_date')
             )
+            ->with('product') // CODE-REVIEW FIX: Eager load products to avoid N+1
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->whereNotIn('sales.status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
             ->whereNotNull('product_id')
@@ -538,19 +541,19 @@ class AdvancedAnalyticsService
             ->get();
 
         return $query->map(function ($item) {
-            $product = Product::find($item->product_id);
             return [
                 'id' => $item->product_id,
-                'name' => $product?->name ?? 'Unknown',
+                'name' => $item->product?->name ?? 'Unknown',
                 'total_qty' => $item->total_qty,
                 'last_sale_date' => $item->last_sale_date,
-                'stock' => $product?->stock_quantity ?? 0,
+                'stock' => $item->product?->stock_quantity ?? 0,
             ];
         })->toArray();
     }
 
     /**
      * Get stock alerts for low inventory
+     * CODE-REVIEW FIX: Correct status logic based on actual stock vs min_stock comparison
      */
     protected function getStockAlerts(?int $branchId): array
     {
@@ -563,13 +566,21 @@ class AdvancedAnalyticsService
             ->get();
 
         return $query->map(function ($product) {
+            $stock = $product->stock_quantity ?? 0;
+            // CODE-REVIEW FIX: Correct status determination
+            if ($stock <= 0) {
+                $status = 'out_of_stock';
+            } else {
+                $status = 'low_stock'; // Already filtered by query, so it's definitely low
+            }
+            
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'sku' => $product->sku,
-                'current_stock' => $product->stock_quantity ?? 0,
+                'current_stock' => $stock,
                 'min_stock' => $product->min_stock,
-                'status' => $product->stock_quantity <= 0 ? 'out_of_stock' : 'low_stock',
+                'status' => $status,
             ];
         })->toArray();
     }
@@ -626,6 +637,7 @@ class AdvancedAnalyticsService
     /**
      * Calculate returning customer rate
      * V35-HIGH-02 FIX: Use sale_date for period filtering
+     * CODE-REVIEW FIX: Optimize to avoid N+1 query problem using efficient subquery
      */
     protected function calculateReturningCustomerRate(?int $branchId, array $dateRange): float
     {
@@ -644,15 +656,20 @@ class AdvancedAnalyticsService
             return 0;
         }
         
-        $returningCustomers = $query->distinct('customer_id')
-            ->get('customer_id')
-            ->filter(function ($sale) {
-                $customer = Customer::find($sale->customer_id);
-                return $customer && $customer->sales()->count() > 1;
-            })
+        // CODE-REVIEW FIX: Use a single efficient query instead of N+1
+        // Count distinct customers who have more than 1 sale (returning customers)
+        $returningCustomersCount = Sale::query()
+            ->select('customer_id')
+            ->whereNotNull('customer_id')
+            ->whereNotIn('status', ['draft', 'cancelled', 'void', 'voided', 'returned', 'refunded'])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->groupBy('customer_id')
+            ->havingRaw('COUNT(*) > 1')
             ->count();
         
-        return ($returningCustomers / $totalSales) * 100;
+        $distinctCustomersInPeriod = $query->distinct('customer_id')->count('customer_id');
+        
+        return $distinctCustomersInPeriod > 0 ? ($returningCustomersCount / $distinctCustomersInPeriod) * 100 : 0;
     }
 
     /**
@@ -950,6 +967,7 @@ class AdvancedAnalyticsService
     /**
      * Get best selling category
      * V35-HIGH-02 FIX: Use sale_date for period filtering
+     * CODE-REVIEW FIX: Use correct ProductCategory model
      */
     protected function getBestSellingCategory(?int $branchId, array $dateRange): ?string
     {
@@ -965,7 +983,8 @@ class AdvancedAnalyticsService
             ->first();
         
         if ($query && $query->category_id) {
-            $category = \App\Models\Category::find($query->category_id);
+            // CODE-REVIEW FIX: Use correct ProductCategory model
+            $category = \App\Models\ProductCategory::find($query->category_id);
             return $category?->name;
         }
         
