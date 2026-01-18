@@ -261,7 +261,7 @@ class KPIDashboardService
         $currentPurchases = Purchase::query()
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereBetween('purchase_date', [$dates['start'], $dates['end']])
-            ->whereNotIn('status', SaleStatus::nonRevenueStatuses())
+            ->whereNotIn('status', PurchaseStatus::nonRelevantStatuses())
             ->sum('total_amount');
 
         // Calculate gross profit
@@ -272,7 +272,7 @@ class KPIDashboardService
         $previousGrossProfit = $previousRevenue - Purchase::query()
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereBetween('purchase_date', [$previousDates['start'], $previousDates['end']])
-            ->whereNotIn('status', SaleStatus::nonRevenueStatuses())
+            ->whereNotIn('status', PurchaseStatus::nonRelevantStatuses())
             ->sum('total_amount');
 
         $grossProfitChange = $this->calculateChange($grossProfit, $previousGrossProfit);
