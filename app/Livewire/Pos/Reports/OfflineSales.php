@@ -56,7 +56,8 @@ class OfflineSales extends Component
             $query->whereDate('sale_date', '<=', $this->dateTo);
         }
 
-        $sales = $query->latest()->paginate(25);
+        // V37-HIGH-02 FIX: Also order by sale_date for consistency with the date filtering
+        $sales = $query->latest('sale_date')->paginate(25);
 
         $branches = Branch::query()
             ->orderBy('name')
