@@ -157,8 +157,9 @@ class Form extends Component
                     'branch_id' => $branchId,
                     'reference_type' => AdjustmentItem::class,
                     'reference_id' => $adjustmentItem->id,
-                    'qty' => abs((float) $item['qty']),
-                    'direction' => (float) $item['qty'] >= 0 ? 'in' : 'out',
+                    // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                    'qty' => abs(decimal_float($item['qty'])),
+                    'direction' => decimal_float($item['qty']) >= 0 ? 'in' : 'out',
                     'reason' => $this->reason,
                     'extra_attributes' => [
                         'adjustment_id' => $this->adjustment->id,

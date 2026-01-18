@@ -28,7 +28,8 @@ class InstallmentService
     ): InstallmentPlan {
         return $this->handleServiceOperation(
             callback: function () use ($sale, $customer, $numInstallments, $downPayment, $interestRate, $startDate, $userId) {
-                $totalAmount = (float) $sale->grand_total;
+                // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                $totalAmount = decimal_float($sale->grand_total);
 
                 if ($numInstallments < 1) {
                     throw new InvalidArgumentException(__('Number of installments must be at least 1'));
@@ -100,7 +101,8 @@ class InstallmentService
                         InstallmentPayment::create([
                             'installment_plan_id' => $plan->id,
                             'installment_number' => $i,
-                            'amount_due' => max(0, (float) $amount),
+                            // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                            'amount_due' => max(0, decimal_float($amount)),
                             'due_date' => $dueDate,
                             'status' => 'pending',
                         ]);
@@ -127,7 +129,8 @@ class InstallmentService
                     throw new InvalidArgumentException(__('Payment amount must be greater than zero'));
                 }
 
-                $remainingAmount = (float) $payment->remaining_amount;
+                // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                $remainingAmount = decimal_float($payment->remaining_amount);
 
                 if ($remainingAmount <= 0) {
                     throw new InvalidArgumentException(__('This payment has already been fully paid'));
@@ -143,7 +146,8 @@ class InstallmentService
                     $newStatus = bccomp($newAmountPaid, $amountDue, 2) >= 0 ? 'paid' : 'partial';
 
                     $payment->update([
-                        'amount_paid' => (float) $newAmountPaid,
+                        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                        'amount_paid' => decimal_float($newAmountPaid),
                         'paid_at' => now(),
                         'payment_method' => $paymentMethod,
                         'payment_reference' => $reference,
@@ -158,7 +162,8 @@ class InstallmentService
                     // Use bcmath to calculate remaining amount precisely
                     $totalAfterDown = bcsub((string) $plan->total_amount, (string) $plan->down_payment, 2);
                     $planRemainingAmount = bcsub($totalAfterDown, $totalPaid, 2);
-                    $planRemainingAmount = max(0, (float) $planRemainingAmount);
+                    // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                    $planRemainingAmount = max(0, decimal_float($planRemainingAmount));
 
                     $plan->update([
                         'remaining_amount' => $planRemainingAmount,

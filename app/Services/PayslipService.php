@@ -72,7 +72,8 @@ class PayslipService
 
         // Transportation allowance (configurable percentage or fixed)
         $transportType = setting('hrm.transport_allowance_type', 'percentage');
-        $transportValue = (float) setting('hrm.transport_allowance_value', 10);
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        $transportValue = decimal_float(setting('hrm.transport_allowance_value', 10));
         if ($transportType === 'percentage') {
             $transportAmount = bcmul((string) $basicSalary, bcdiv((string) $transportValue, '100', 4), 2);
         } else {
@@ -80,13 +81,13 @@ class PayslipService
             $transportAmount = bcround((string) $transportValue, 2);
         }
         if (bccomp($transportAmount, '0', 2) > 0) {
-            $allowances['transport'] = (float) $transportAmount;
+            $allowances['transport'] = decimal_float($transportAmount);
             $total = bcadd($total, $transportAmount, 2);
         }
 
         // Housing allowance (configurable)
         $housingType = setting('hrm.housing_allowance_type', 'percentage');
-        $housingValue = (float) setting('hrm.housing_allowance_value', 0);
+        $housingValue = decimal_float(setting('hrm.housing_allowance_value', 0));
         if ($housingType === 'percentage') {
             $housingAmount = bcmul((string) $basicSalary, bcdiv((string) $housingValue, '100', 4), 2);
         } else {
@@ -94,22 +95,22 @@ class PayslipService
             $housingAmount = bcround((string) $housingValue, 2);
         }
         if (bccomp($housingAmount, '0', 2) > 0) {
-            $allowances['housing'] = (float) $housingAmount;
+            $allowances['housing'] = decimal_float($housingAmount);
             $total = bcadd($total, $housingAmount, 2);
         }
 
         // Meal allowance (fixed)
-        $mealAllowance = (float) setting('hrm.meal_allowance', 0);
+        $mealAllowance = decimal_float(setting('hrm.meal_allowance', 0));
         if ($mealAllowance > 0) {
             // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
             $mealAllowanceStr = bcround((string) $mealAllowance, 2);
-            $allowances['meal'] = (float) $mealAllowanceStr;
+            $allowances['meal'] = decimal_float($mealAllowanceStr);
             $total = bcadd($total, $mealAllowanceStr, 2);
         }
 
         return [
             'breakdown' => $allowances,
-            'total' => (float) $total,
+            'total' => decimal_float($total),
         ];
     }
 
@@ -123,12 +124,13 @@ class PayslipService
 
         // Social Insurance deduction (use bcmath)
         $siConfig = config('hrm.social_insurance', []);
-        $siRate = (float) ($siConfig['rate'] ?? 0.14);
-        $siMaxSalary = (float) ($siConfig['max_salary'] ?? 12600);
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        $siRate = decimal_float($siConfig['rate'] ?? 0.14);
+        $siMaxSalary = decimal_float($siConfig['max_salary'] ?? 12600);
         $siBaseSalary = bccomp((string) $grossSalary, (string) $siMaxSalary, 2) > 0 ? $siMaxSalary : $grossSalary;
         $socialInsurance = bcmul((string) $siBaseSalary, (string) $siRate, 2);
         if (bccomp($socialInsurance, '0', 2) > 0) {
-            $deductions['social_insurance'] = (float) $socialInsurance;
+            $deductions['social_insurance'] = decimal_float($socialInsurance);
             $total = bcadd($total, $socialInsurance, 2);
         }
 
@@ -139,8 +141,8 @@ class PayslipService
         $previousLimit = 0;
 
         foreach ($taxBrackets as $bracket) {
-            $limit = (float) ($bracket['limit'] ?? PHP_FLOAT_MAX);
-            $rate = (float) ($bracket['rate'] ?? 0);
+            $limit = decimal_float($bracket['limit'] ?? PHP_FLOAT_MAX);
+            $rate = decimal_float($bracket['rate'] ?? 0);
 
             if ($annualGross <= $previousLimit) {
                 break;
@@ -158,17 +160,17 @@ class PayslipService
         }
 
         // Additional fixed deductions from settings
-        $healthInsurance = (float) setting('hrm.health_insurance_deduction', 0);
+        $healthInsurance = decimal_float(setting('hrm.health_insurance_deduction', 0));
         if ($healthInsurance > 0) {
             // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
             $healthInsuranceStr = bcround((string) $healthInsurance, 2);
-            $deductions['health_insurance'] = (float) $healthInsuranceStr;
+            $deductions['health_insurance'] = decimal_float($healthInsuranceStr);
             $total = bcadd($total, $healthInsuranceStr, 2);
         }
 
         return [
             'breakdown' => $deductions,
-            'total' => (float) $total,
+            'total' => decimal_float($total),
         ];
     }
 
@@ -224,13 +226,14 @@ class PayslipService
             'employee_id' => $employeeId,
             'period' => $period,
             // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
-            'basic' => (float) bcround((string) $basic, 2),
-            'allowances' => (float) bcround((string) $allowances, 2),
+            // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+            'basic' => decimal_float(bcround((string) $basic, 2)),
+            'allowances' => decimal_float(bcround((string) $allowances, 2)),
             'allowance_breakdown' => $allowanceResult['breakdown'],
-            'deductions' => (float) bcround((string) $deductions, 2),
+            'deductions' => decimal_float(bcround((string) $deductions, 2)),
             'deduction_breakdown' => $deductionResult['breakdown'],
-            'gross' => (float) bcround((string) $gross, 2),
-            'net' => (float) $net,
+            'gross' => decimal_float(bcround((string) $gross, 2)),
+            'net' => decimal_float($net),
             'status' => 'draft',
         ];
     }
@@ -256,7 +259,8 @@ class PayslipService
         ?array $salaryChanges = null
     ): float {
         // Get current salary using the model accessor for consistency
-        $currentSalary = (float) $employee->salary;
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        $currentSalary = decimal_float($employee->salary);
 
         // If no salary changes provided, try to get from activity log
         if ($salaryChanges === null) {
@@ -282,7 +286,8 @@ class PayslipService
         // This would be the salary before the first change, or the old_salary if tracked
         $salaryAtPeriodStart = $currentSalary;
         if (! empty($salaryChanges[0]['old_salary'])) {
-            $salaryAtPeriodStart = (float) $salaryChanges[0]['old_salary'];
+            // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+            $salaryAtPeriodStart = decimal_float($salaryChanges[0]['old_salary']);
         }
 
         // If first change is after period start, calculate days at initial salary
@@ -298,7 +303,8 @@ class PayslipService
         // Process each salary change
         foreach ($salaryChanges as $index => $change) {
             $changeDate = \Carbon\Carbon::parse($change['effective_date']);
-            $newSalary = (float) $change['new_salary'];
+            // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+            $newSalary = decimal_float($change['new_salary']);
 
             // Skip changes outside the period
             if ($changeDate->gt($periodEnd)) {
@@ -325,7 +331,8 @@ class PayslipService
         }
 
         // V30-MED-08 FIX: Use bcround() instead of bcdiv truncation
-        return (float) bcround($proRataSalary, 2);
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        return decimal_float(bcround($proRataSalary, 2));
     }
 
     /**
@@ -364,8 +371,9 @@ class PayslipService
                 if (isset($attributes['basic_salary']) && isset($old['basic_salary'])) {
                     $changes[] = [
                         'effective_date' => $activity->created_at->format('Y-m-d'),
-                        'old_salary' => (float) $old['basic_salary'],
-                        'new_salary' => (float) $attributes['basic_salary'],
+                        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+                        'old_salary' => decimal_float($old['basic_salary']),
+                        'new_salary' => decimal_float($attributes['basic_salary']),
                     ];
                 }
             }

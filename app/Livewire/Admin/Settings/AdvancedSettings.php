@@ -181,7 +181,8 @@ class AdvancedSettings extends Component
             'low_stock_threshold' => (int) $this->settingsService->get('notifications.low_stock_threshold', 10),
             'rental_reminder_days' => (int) $this->settingsService->get('notifications.rental_reminder_days', 3),
             'late_payment_enabled' => (bool) $this->settingsService->get('notifications.late_payment_enabled', true),
-            'late_penalty_percent' => (float) $this->settingsService->get('notifications.late_penalty_percent', 5),
+            // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+            'late_penalty_percent' => decimal_float($this->settingsService->get('notifications.late_penalty_percent', 5)),
         ];
 
         $this->firebase = [

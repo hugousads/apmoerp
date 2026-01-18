@@ -74,8 +74,9 @@ class Form extends Component
         $this->name_ar = $this->workCenter->name_ar ?? '';
         $this->description = $this->workCenter->description ?? '';
         $this->type = $this->workCenter->type;
-        $this->capacity_per_hour = $this->workCenter->capacity_per_hour ? (float) $this->workCenter->capacity_per_hour : null;
-        $this->cost_per_hour = (float) $this->workCenter->cost_per_hour;
+        // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
+        $this->capacity_per_hour = $this->workCenter->capacity_per_hour ? decimal_float($this->workCenter->capacity_per_hour) : null;
+        $this->cost_per_hour = decimal_float($this->workCenter->cost_per_hour);
         $this->status = $this->workCenter->status;
     }
 
