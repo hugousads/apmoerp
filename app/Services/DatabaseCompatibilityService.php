@@ -54,6 +54,7 @@ class DatabaseCompatibilityService
     /**
      * Whitelist of safe SQL expressions that can be used as date values.
      * These are safe because they are fixed SQL functions with no user input.
+     * Note: These correspond to the output of the now() method for different drivers.
      */
     private const SAFE_DATE_EXPRESSIONS = [
         'NOW()',
@@ -83,14 +84,15 @@ class DatabaseCompatibilityService
      */
     private function validateDateExpression(string $expr): void
     {
-        // Check if it's a whitelisted SQL expression
+        // Check if it's a whitelisted SQL expression (e.g., NOW(), datetime('now'))
         if (in_array($expr, self::SAFE_DATE_EXPRESSIONS, true)) {
             return;
         }
 
-        // Check if it's a valid column name
-        // Also allow aggregate functions with column names: MAX(column), MIN(column), etc.
-        if (preg_match('/^(MAX|MIN|AVG|SUM|COUNT)\s*\(\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\)$/i', $expr)) {
+        // Check if it's a valid aggregate function with table.column format
+        // Pattern matches: MAX(column), MAX(table.column), MIN(column), etc.
+        // Uses same format as COLUMN_PATTERN: alphanumeric/underscore with optional single dot
+        if (preg_match('/^(MAX|MIN|AVG|SUM|COUNT)\s*\(\s*[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?\s*\)$/i', $expr)) {
             return;
         }
 
@@ -422,11 +424,20 @@ class DatabaseCompatibilityService
             throw new \InvalidArgumentException("Invalid JSON path format: {$path}");
         }
 
-        // Normalize path to start with $. if not present
+        // Normalize path - strip leading $ or $. for PostgreSQL which uses key names directly
+        $plainPath = $path;
+        if (str_starts_with($plainPath, '$.')) {
+            $plainPath = substr($plainPath, 2);
+        } elseif (str_starts_with($plainPath, '$')) {
+            $plainPath = substr($plainPath, 1);
+        }
+
+        // MySQL/SQLite path with $. prefix
         $normalizedPath = str_starts_with($path, '$.') ? $path : "$.{$path}";
 
         return match ($this->getDriver()) {
-            'pgsql' => "{$column}->'{$normalizedPath}'",
+            // PostgreSQL uses arrow operator with plain key name
+            'pgsql' => "{$column}->'{$plainPath}'",
             'sqlite', 'mysql', 'mariadb' => "JSON_EXTRACT({$column}, '{$normalizedPath}')",
             default => "JSON_EXTRACT({$column}, '{$normalizedPath}')",
         };
