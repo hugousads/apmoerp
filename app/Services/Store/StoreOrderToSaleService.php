@@ -155,14 +155,14 @@ class StoreOrderToSaleService
                 continue;
             }
 
-            $qty = (float) Arr::get($item, 'qty', 0);
+            $qty = decimal_float(Arr::get($item, 'qty', 0));
 
             if ($qty <= 0) {
                 continue;
             }
 
-            $price = (float) Arr::get($item, 'price', 0);
-            $discount = (float) Arr::get($item, 'discount', 0);
+            $price = decimal_float(Arr::get($item, 'price', 0));
+            $discount = decimal_float(Arr::get($item, 'discount', 0));
             $total = Arr::get($item, 'total');
 
             if ($total === null) {
