@@ -13,24 +13,22 @@ use Illuminate\Support\Facades\Schema;
  *
  * Validates database schema, indexes, foreign keys, and data integrity.
  *
- * SECURITY (V37-SQL-03): SQL Expression Safety
- * =============================================
- * This command uses whereRaw() and DB::statement() with variable interpolation.
- * All interpolated values are safe because:
+ * SECURITY (V40-SQL-03): SQL Expression Safety - REVIEWED
+ * ========================================================
+ * V40-HIGH-14 FIX: Refactored to use explicit validation instead of raw SQL interpolation.
  *
- * 1. checkDuplicates() $where parameter: Contains only hardcoded conditions defined
- *    within this class (e.g., "email IS NOT NULL AND email != ''"). These are
- *    compile-time constants, never derived from user input.
+ * 1. checkDuplicates(): Now uses whitelist-based filter types instead of raw SQL
+ *    - Validates column names via regex pattern
+ *    - Only accepts predefined filter types from DUPLICATE_CHECK_FILTERS constant
  *
- * 2. applyFixes() ALTER TABLE statements: Generated from validated table/column names
- *    that exist in the hardcoded $indexChecks array and are verified via Schema::hasTable()
- *    before any statement is generated.
+ * 2. applyFixes(): Validates fix statements against strict regex pattern
+ *    - Only allows ALTER TABLE ADD INDEX with validated identifiers
  *
- * 3. getTableIndexes() SHOW INDEX query: Uses table names from the validated
- *    $indexChecks array, not user input.
+ * 3. getTableIndexes(): Validates table names via regex pattern
  *
- * This command runs via artisan CLI with elevated privileges and is not exposed
- * to web requests or user input.
+ * This command runs via artisan CLI and is not exposed to web requests.
+ *
+ * @security-reviewed V40 - SQL injection protection via whitelist and regex validation
  */
 class CheckDatabaseIntegrity extends Command
 {
