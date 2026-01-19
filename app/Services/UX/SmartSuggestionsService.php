@@ -95,7 +95,7 @@ class SmartSuggestionsService
      */
     public function suggestOptimalPricing(Product $product, ?float $targetMarginPercent = null): array
     {
-        $cost = (float) ($product->standard_cost ?? 0);
+        $cost = decimal_float($product->standard_cost ?? 0);
 
         if (bccomp((string) $cost, '0', 2) <= 0) {
             return [
@@ -126,7 +126,7 @@ class SmartSuggestionsService
         }
 
         // Get current pricing status
-        $currentPrice = (float) ($product->default_price ?? 0);
+        $currentPrice = decimal_float($product->default_price ?? 0);
         $currentMargin = bccomp((string) $currentPrice, '0', 2) > 0
             ? bcmul(bcdiv(bcsub((string) $currentPrice, (string) $cost, 2), (string) $currentPrice, 4), '100', 2)
             : '0';
@@ -291,7 +291,7 @@ class SmartSuggestionsService
             ->where('product_id', $productId)
             ->sum('quantity');
 
-        return (float) ($totalStock ?? 0);
+        return decimal_float($totalStock ?? 0);
     }
 
     /**

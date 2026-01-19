@@ -252,10 +252,10 @@ class StoreOrderToSaleService
      */
     protected function calculateSubtotal(StoreOrder $order): float
     {
-        $total = (float) ($order->total ?? 0);
-        $tax = (float) ($order->tax_total ?? 0);
-        $shipping = (float) ($order->shipping_total ?? 0);
-        $discount = (float) ($order->discount_total ?? 0);
+        $total = decimal_float($order->total ?? 0);
+        $tax = decimal_float($order->tax_total ?? 0);
+        $shipping = decimal_float($order->shipping_total ?? 0);
+        $discount = decimal_float($order->discount_total ?? 0);
 
         return $total - $tax - $shipping + $discount;
     }
