@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Project extends Model
 {
@@ -65,23 +66,27 @@ class Project extends Model
         static::creating(function ($project) {
             if (empty($project->code)) {
                 // V8-HIGH-N02 FIX: Use lockForUpdate to prevent race condition
-                // Get the last code with a lock to prevent duplicates
-                $lastProject = static::whereDate('created_at', Carbon::today())
-                    ->lockForUpdate()
-                    ->orderBy('id', 'desc')
-                    ->first();
+                // V43-HIGH-03 FIX: Wrap in transaction to ensure lock is effective
+                // lockForUpdate() only works within an active transaction
+                $project->code = DB::transaction(function () {
+                    // Get the last code with a lock to prevent duplicates
+                    $lastProject = static::whereDate('created_at', Carbon::today())
+                        ->lockForUpdate()
+                        ->orderBy('id', 'desc')
+                        ->first();
 
-                $seq = 1;
-                if ($lastProject && preg_match('/PRJ-\d{8}-(\d{6})$/', $lastProject->code, $matches)) {
-                    $seq = ((int) $matches[1]) + 1;
-                }
+                    $seq = 1;
+                    if ($lastProject && preg_match('/PRJ-\d{8}-(\d{6})$/', $lastProject->code, $matches)) {
+                        $seq = ((int) $matches[1]) + 1;
+                    }
 
-                $project->code = 'PRJ-'.date('Ymd').'-'.str_pad(
-                    (string) $seq,
-                    6,
-                    '0',
-                    STR_PAD_LEFT
-                );
+                    return 'PRJ-'.date('Ymd').'-'.str_pad(
+                        (string) $seq,
+                        6,
+                        '0',
+                        STR_PAD_LEFT
+                    );
+                });
             }
         });
     }

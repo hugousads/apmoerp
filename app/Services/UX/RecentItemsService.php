@@ -155,16 +155,19 @@ class RecentItemsService
 
     /**
      * Get label for an item
+     * V43-HIGH-04 FIX: Added whereNull('deleted_at') to prevent showing labels for deleted items
+     * Note: report_definitions table may not use soft deletes, so we don't filter on deleted_at for reports
      */
     protected function getItemLabel(string $type, int $itemId): string
     {
         return match ($type) {
-            'product' => DB::table('products')->where('id', $itemId)->value('name') ?? "Product #{$itemId}",
-            'customer' => DB::table('customers')->where('id', $itemId)->value('name') ?? "Customer #{$itemId}",
-            'sale' => DB::table('sales')->where('id', $itemId)->value('reference_number') ?? "Sale #{$itemId}",
-            'purchase' => DB::table('purchases')->where('id', $itemId)->value('reference_number') ?? "Purchase #{$itemId}",
-            'invoice' => DB::table('rental_invoices')->where('id', $itemId)->value('code') ?? "Invoice #{$itemId}",
-            'supplier' => DB::table('suppliers')->where('id', $itemId)->value('name') ?? "Supplier #{$itemId}",
+            'product' => DB::table('products')->where('id', $itemId)->whereNull('deleted_at')->value('name') ?? "Product #{$itemId}",
+            'customer' => DB::table('customers')->where('id', $itemId)->whereNull('deleted_at')->value('name') ?? "Customer #{$itemId}",
+            'sale' => DB::table('sales')->where('id', $itemId)->whereNull('deleted_at')->value('reference_number') ?? "Sale #{$itemId}",
+            'purchase' => DB::table('purchases')->where('id', $itemId)->whereNull('deleted_at')->value('reference_number') ?? "Purchase #{$itemId}",
+            'invoice' => DB::table('rental_invoices')->where('id', $itemId)->whereNull('deleted_at')->value('code') ?? "Invoice #{$itemId}",
+            'supplier' => DB::table('suppliers')->where('id', $itemId)->whereNull('deleted_at')->value('name') ?? "Supplier #{$itemId}",
+            // Note: report_definitions does not use soft deletes
             'report' => DB::table('report_definitions')->where('id', $itemId)->value('name') ?? "Report #{$itemId}",
             default => "{$type} #{$itemId}",
         };

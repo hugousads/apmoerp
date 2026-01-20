@@ -36,6 +36,21 @@ class ReportService implements ReportServiceInterface
         $this->branchAccessService = $branchAccessService ?? app(BranchAccessService::class);
     }
 
+    /**
+     * Get financial summary for a branch.
+     *
+     * V43-HIGH-02 NOTE: This method returns a SIMPLIFIED P&L calculation:
+     *   pnl = Total Sales Revenue - Total Purchases
+     *
+     * This is NOT a true accounting P&L. For complete P&L with COGS and expenses,
+     * use Admin\ReportsController::financePnl() which calculates:
+     *   Revenue - COGS (from sale_items.cost_price) - Operating Expenses
+     *
+     * The 'pnl' field here is better described as "Gross Trading Margin" or
+     * "Sales minus Purchases" for quick cash-flow oriented analysis.
+     *
+     * @see \App\Http\Controllers\Admin\ReportsController::financePnl() for true P&L
+     */
     public function financeSummary(int $branchId, ?string $from = null, ?string $to = null): array
     {
         return $this->handleServiceOperation(
@@ -71,7 +86,9 @@ class ReportService implements ReportServiceInterface
                     'period' => [$from, $to],
                     'sales' => ['total' => decimal_float($sales->total ?? 0), 'paid' => decimal_float($sales->paid ?? 0)],
                     'purchases' => ['total' => decimal_float($purchases->total ?? 0), 'paid' => decimal_float($purchases->paid ?? 0)],
+                    // V43-HIGH-02 NOTE: This is simplified P&L (sales - purchases), not true accounting P&L
                     'pnl' => decimal_float($sales->total ?? 0) - decimal_float($purchases->total ?? 0),
+                    'pnl_type' => 'simplified', // V43-HIGH-02 FIX: Indicate this is a simplified calculation
                 ];
             },
             operation: 'financeSummary',

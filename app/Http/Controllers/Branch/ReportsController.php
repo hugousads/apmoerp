@@ -63,6 +63,18 @@ class ReportsController extends Controller
         return $this->ok(['as_of' => $asOf, 'items' => $rows]);
     }
 
+    /**
+     * Branch P&L Report
+     *
+     * V43-HIGH-02 NOTE: This method returns a SIMPLIFIED P&L calculation:
+     *   pnl = Total Sales Revenue - Total Purchases
+     *
+     * This is NOT a true accounting P&L. For complete P&L with COGS and expenses,
+     * use Admin\ReportsController::financePnl() which calculates:
+     *   Revenue - COGS (from sale_items.cost_price) - Operating Expenses
+     *
+     * @see \App\Http\Controllers\Admin\ReportsController::financePnl() for true P&L
+     */
     public function pnl(Request $request)
     {
         $b = (int) $request->attributes->get('branch_id');
@@ -95,7 +107,13 @@ class ReportsController extends Controller
             ->whereDate('purchase_date', '<=', $to)
             ->sum('total_amount');
 
-        return $this->ok(['period' => [$from, $to], 'pnl' => round($sales - $purchases, 2)]);
+        // V43-HIGH-02 FIX: Include pnl_type to indicate this is simplified calculation
+        return $this->ok([
+            'period' => [$from, $to], 
+            'pnl' => round($sales - $purchases, 2),
+            'pnl_type' => 'simplified', // V43-HIGH-02: Sales - Purchases, not true accounting P&L
+            'note' => 'This is a simplified P&L (Sales - Purchases). For full P&L with COGS/expenses, use admin/finance/pnl endpoint.',
+        ]);
     }
 
     public function cashflow(Request $request)
