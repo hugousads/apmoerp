@@ -28,6 +28,12 @@ class CustomerPortalController extends Controller
 
     /**
      * Authenticate customer
+     * 
+     * V43-MED-02 NOTE: Customer lookup by email only can cause ambiguity in multi-branch
+     * setups where the same email may exist across branches. The current implementation
+     * uses portal_enabled + password as additional constraints. For stricter isolation,
+     * consider adding branch selection on the login page or enforcing unique email
+     * constraint across the customers table.
      */
     public function authenticate(Request $request)
     {
@@ -36,7 +42,11 @@ class CustomerPortalController extends Controller
             'password' => 'required',
         ]);
 
-        $customer = Customer::where('email', $request->email)->first();
+        // V43-MED-02 FIX: Only look up customers with portal access enabled
+        // This reduces ambiguity when duplicate emails exist across branches
+        $customer = Customer::where('email', $request->email)
+            ->where('portal_enabled', true)
+            ->first();
 
         if (! $customer || ! Hash::check($request->password, $customer->portal_password)) {
             return back()->withErrors([
@@ -44,16 +54,12 @@ class CustomerPortalController extends Controller
             ]);
         }
 
-        if (! $customer->portal_enabled) {
-            return back()->withErrors([
-                'email' => __('Portal access is not enabled for this account. Please contact support.'),
-            ]);
-        }
-
+        // Store branch_id in session for branch-scoped queries
         session(['customer_portal' => [
             'id' => $customer->id,
             'name' => $customer->name,
             'email' => $customer->email,
+            'branch_id' => $customer->branch_id,
         ]]);
 
         return redirect()->route('portal.dashboard');

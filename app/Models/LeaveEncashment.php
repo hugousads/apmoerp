@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Leave Encashment Model
@@ -65,19 +66,24 @@ class LeaveEncashment extends Model
 
     /**
      * Generate unique encashment number
+     * V43-HIGH-03 FIX: Wrap in transaction with lockForUpdate to prevent race conditions
      */
     public static function generateEncashmentNumber(): string
     {
-        $prefix = 'ENC';
-        $date = now()->format('Ymd');
-        
-        $lastEncashment = static::whereDate('created_at', now()->toDateString())
-            ->orderByDesc('id')
-            ->first();
-        
-        $sequence = $lastEncashment ? ((int) substr($lastEncashment->encashment_number, -4)) + 1 : 1;
-        
-        return sprintf('%s-%s-%04d', $prefix, $date, $sequence);
+        return DB::transaction(function () {
+            $prefix = 'ENC';
+            $date = now()->format('Ymd');
+            
+            // V43-HIGH-03 FIX: Use lockForUpdate to prevent duplicate codes
+            $lastEncashment = static::whereDate('created_at', now()->toDateString())
+                ->lockForUpdate()
+                ->orderByDesc('id')
+                ->first();
+            
+            $sequence = $lastEncashment ? ((int) substr($lastEncashment->encashment_number, -4)) + 1 : 1;
+            
+            return sprintf('%s-%s-%04d', $prefix, $date, $sequence);
+        });
     }
 
     // Relationships

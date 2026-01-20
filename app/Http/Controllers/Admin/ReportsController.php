@@ -63,13 +63,16 @@ class ReportsController extends Controller
     /**
      * NEW-V15-CRITICAL-02 FIX: System performance report
      *
-     * V39-HIGH-02 NOTE: Response times and slow query metrics require integration with
-     * an APM solution (e.g., Laravel Telescope, Pulse, New Relic) or custom middleware
-     * that logs request timings to a database. Currently only real-time memory metrics
-     * are available. For production monitoring, consider:
+     * V39-HIGH-02 / V43-HIGH-01 NOTE: Response times and slow query metrics require 
+     * integration with an APM solution (e.g., Laravel Telescope, Pulse, New Relic) 
+     * or custom middleware that logs request timings to a database. Currently only 
+     * real-time memory metrics are available. For production monitoring, consider:
      * - Installing Laravel Telescope for development debugging
      * - Installing Laravel Pulse for production performance monitoring
      * - Configuring MySQL slow query log and parsing it periodically
+     *
+     * This endpoint returns placeholder values until APM integration is configured.
+     * See config/monitoring.php for APM configuration options.
      */
     public function performance(Request $request)
     {
@@ -78,25 +81,44 @@ class ReportsController extends Controller
 
         $performanceData = [
             'period' => ['from' => $from, 'to' => $to],
+            // V43-HIGH-01 FIX: Add data_available flag to indicate placeholder status
+            'data_available' => false,
+            'integration_required' => 'Laravel Telescope, Pulse, or New Relic',
             'response_times' => [
-                // V39-HIGH-02 NOTE: These metrics require APM integration (Telescope/Pulse)
+                // V39-HIGH-02 / V43-HIGH-01 NOTE: These metrics require APM integration (Telescope/Pulse)
                 'avg' => 0,
                 'min' => 0,
                 'max' => 0,
-                'note' => 'Requires APM integration for real metrics',
+                'note' => 'Requires APM integration for real metrics. Install laravel/telescope or laravel/pulse.',
             ],
             'database_queries' => [
-                // V39-HIGH-02 NOTE: Slow query count requires MySQL slow query log parsing
+                // V39-HIGH-02 / V43-HIGH-01 NOTE: Slow query count requires MySQL slow query log parsing
                 'slow_queries_count' => 0,
-                'note' => 'Requires slow query log integration',
+                'note' => 'Requires slow query log integration or query log middleware.',
             ],
             'memory_usage' => [
                 'current' => memory_get_usage(true),
                 'peak' => memory_get_peak_usage(true),
+                'current_formatted' => $this->formatBytes(memory_get_usage(true)),
+                'peak_formatted' => $this->formatBytes(memory_get_peak_usage(true)),
             ],
         ];
 
         return $this->ok($performanceData);
+    }
+
+    /**
+     * Format bytes to human-readable format
+     */
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        return round($bytes, 2) . ' ' . $units[$i];
     }
 
     /**
@@ -249,6 +271,15 @@ class ReportsController extends Controller
      * NEW-V15-CRITICAL-02 FIX: Finance profit and loss report
      * V31-HIGH-03 FIX: Use proper date columns and exclude non-revenue statuses
      * BUG-1 FIX: Calculate COGS from actual cost_price in sale_items, not total purchases
+     *
+     * V43-HIGH-02 NOTE: This is the TRUE ACCOUNTING P&L calculation:
+     *   Revenue - COGS (from sale_items.cost_price * quantity) - Operating Expenses
+     *
+     * This differs from the simplified P&L in ReportService::financeSummary() and
+     * Branch\ReportsController::pnl() which only compute Sales - Purchases.
+     *
+     * @see \App\Services\ReportService::financeSummary() for simplified P&L
+     * @see \App\Http\Controllers\Branch\ReportsController::pnl() for simplified P&L
      */
     public function financePnl(Request $request)
     {
@@ -272,9 +303,11 @@ class ReportsController extends Controller
         // BUG-1 FIX: Calculate actual COGS from sale_items.cost_price * quantity
         // This represents the actual cost of goods that were sold, not total purchases
         // V39-CRIT-03 FIX: Exclude soft-deleted sales using whereNull('sales.deleted_at')
+        // V43-CRIT-02 FIX: Also exclude soft-deleted sale_items using whereNull('sale_items.deleted_at')
         $cogsQuery = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->whereNull('sales.deleted_at')
+            ->whereNull('sale_items.deleted_at')
             ->whereDate('sales.sale_date', '>=', $from)
             ->whereDate('sales.sale_date', '<=', $to)
             ->whereNotIn('sales.status', SaleStatus::nonRevenueStatuses());
@@ -283,9 +316,13 @@ class ReportsController extends Controller
             $cogsQuery->where('sales.branch_id', $branchId);
         }
 
+        // V43-CRIT-02 FIX: Exclude soft-deleted expenses using whereNull('deleted_at')
+        // Also filter for approved status only if business rules require it
         $expensesQuery = DB::table('expenses')
+            ->whereNull('deleted_at')
             ->whereDate('expense_date', '>=', $from)
-            ->whereDate('expense_date', '<=', $to);
+            ->whereDate('expense_date', '<=', $to)
+            ->where('status', 'approved');
 
         if ($branchId) {
             $expensesQuery->where('branch_id', $branchId);
@@ -310,6 +347,8 @@ class ReportsController extends Controller
         return $this->ok([
             'period' => ['from' => $from, 'to' => $to],
             'branch_id' => $branchId ?: 'all',
+            // V43-HIGH-02 FIX: Indicate this is a full accounting P&L with COGS and expenses
+            'pnl_type' => 'full', // V43-HIGH-02: True accounting P&L (Revenue - COGS - Expenses)
             // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
             'revenue' => decimal_float($totalSales),
             'cost_of_goods' => decimal_float($totalCogs),

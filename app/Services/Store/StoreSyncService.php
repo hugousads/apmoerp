@@ -673,13 +673,27 @@ class StoreSyncService
         $log = $this->createSyncLog($store, StoreSyncLog::TYPE_INVENTORY, StoreSyncLog::DIRECTION_PUSH);
 
         try {
+            // V43-CRIT-01 FIX: Guard against null branch_id to prevent incorrect stock calculations
+            if (! $store->branch_id) {
+                $log->markFailed('Store has no branch_id configured');
+                return $log;
+            }
+
             $client = new LaravelClient($store);
             $mappings = ProductStoreMapping::where('store_id', $store->id)->with('product')->get();
+
+            // V43-CRIT-01 FIX: Set branch context before calling currentQty
+            // Without branch context, currentQty returns 0.0 in background/API contexts
+            request()->attributes->set('branch_id', $store->branch_id);
+
+            // V43-CRIT-01 FIX: Get default warehouse for the store's branch for accurate stock
+            $warehouseId = $this->getDefaultWarehouseForBranch($store->branch_id);
 
             $items = [];
             foreach ($mappings as $mapping) {
                 if ($mapping->product) {
-                    $currentQty = $this->inventory->currentQty($mapping->product->id);
+                    // V43-CRIT-01 FIX: Pass warehouse_id for warehouse-specific stock
+                    $currentQty = $this->inventory->currentQty($mapping->product->id, $warehouseId);
                     $items[] = [
                         'product_id' => $mapping->external_id,
                         'quantity' => (int) $currentQty,

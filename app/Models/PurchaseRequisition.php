@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class PurchaseRequisition extends BaseModel
 {
@@ -34,18 +35,22 @@ class PurchaseRequisition extends BaseModel
         static::creating(function ($model) {
             if (! $model->code) {
                 // V8-HIGH-N02 FIX: Use lockForUpdate to prevent race condition
-                // Get the last code with a lock to prevent duplicates
-                $lastReq = static::whereDate('created_at', today())
-                    ->lockForUpdate()
-                    ->orderBy('id', 'desc')
-                    ->first();
+                // V43-HIGH-03 FIX: Wrap in transaction to ensure lock is effective
+                // lockForUpdate() only works within an active transaction
+                $model->code = DB::transaction(function () {
+                    // Get the last code with a lock to prevent duplicates
+                    $lastReq = static::whereDate('created_at', today())
+                        ->lockForUpdate()
+                        ->orderBy('id', 'desc')
+                        ->first();
 
-                $seq = 1;
-                if ($lastReq && preg_match('/REQ-\d{8}-(\d{5})$/', $lastReq->code, $matches)) {
-                    $seq = ((int) $matches[1]) + 1;
-                }
+                    $seq = 1;
+                    if ($lastReq && preg_match('/REQ-\d{8}-(\d{5})$/', $lastReq->code, $matches)) {
+                        $seq = ((int) $matches[1]) + 1;
+                    }
 
-                $model->code = 'REQ-'.date('Ymd').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
+                    return 'REQ-'.date('Ymd').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
+                });
             }
         });
     }
