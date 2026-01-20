@@ -146,8 +146,8 @@ class Supplier extends BaseModel
      */
     public function addBalance(string $amount): void
     {
-        $this->balance = bcadd((string) $this->balance, $amount, 4);
-        $this->save();
+        $newBalance = bcadd((string) ($this->balance ?? '0'), $amount, 4);
+        $this->update(['balance' => $newBalance]);
     }
 
     /**
@@ -159,8 +159,8 @@ class Supplier extends BaseModel
      */
     public function subtractBalance(string $amount): void
     {
-        $this->balance = bcsub((string) $this->balance, $amount, 4);
-        $this->save();
+        $newBalance = bcsub((string) ($this->balance ?? '0'), $amount, 4);
+        $this->update(['balance' => $newBalance]);
     }
 
     public function canReceiveOrders(): bool
