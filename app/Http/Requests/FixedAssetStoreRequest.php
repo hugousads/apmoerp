@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Traits\HasMultilingualValidation;
+use App\Rules\BranchScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
 
 class FixedAssetStoreRequest extends FormRequest
@@ -18,6 +19,8 @@ class FixedAssetStoreRequest extends FormRequest
 
     public function rules(): array
     {
+        $branchId = $this->user()?->branch_id;
+
         return [
             'asset_code' => $this->flexibleCode(required: true, max: 50), // Allow separators
             'name' => $this->multilingualString(required: true, max: 255),
@@ -33,7 +36,8 @@ class FixedAssetStoreRequest extends FormRequest
             'depreciation_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'depreciation_start_date' => ['nullable', 'date'],
             'status' => ['required', 'in:active,inactive,disposed,under_maintenance'],
-            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'supplier_id' => ['nullable', new BranchScopedExists('suppliers', 'id', $branchId, allowNull: true)],
             'serial_number' => $this->flexibleCode(required: false, max: 100),
             'model' => $this->multilingualString(required: false, max: 100),
             'manufacturer' => $this->multilingualString(required: false, max: 100),

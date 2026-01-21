@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Rules\BranchScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
 
 class TicketUpdateRequest extends FormRequest
@@ -15,11 +16,14 @@ class TicketUpdateRequest extends FormRequest
 
     public function rules(): array
     {
+        $branchId = $this->user()?->branch_id;
+
         return [
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['sometimes', 'required', 'string'],
             'status' => ['sometimes', 'in:new,open,pending,resolved,closed'],
-            'customer_id' => ['nullable', 'exists:customers,id'],
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'customer_id' => ['nullable', new BranchScopedExists('customers', 'id', $branchId, allowNull: true)],
             'category_id' => ['nullable', 'exists:ticket_categories,id'],
             'priority' => ['nullable', 'exists:ticket_priorities,id'],
             'assigned_to' => ['nullable', 'exists:users,id'],
