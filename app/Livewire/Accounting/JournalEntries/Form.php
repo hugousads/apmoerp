@@ -158,6 +158,9 @@ class Form extends Component
 
     public function save(): mixed
     {
+        // V58-HIGH-01 FIX: Re-authorize on mutation to prevent direct method calls
+        $this->authorize($this->journalEntryId ? 'accounting.update' : 'accounting.create');
+
         $this->validate();
         $data = $this->form;
         $lines = $this->lines;

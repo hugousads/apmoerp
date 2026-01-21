@@ -37,8 +37,11 @@ class Form extends Component
 
     protected function rules(): array
     {
+        $branchId = auth()->user()?->branch_id;
+
         return [
-            'product_id' => ['required', 'exists:products,id'],
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'product_id' => ['required', new \App\Rules\BranchScopedExists('products', 'id', $branchId)],
             'name' => $this->multilingualString(required: true, max: 255),
             'name_ar' => $this->multilingualString(required: false, max: 255),
             'description' => $this->unicodeText(required: false, max: 2000),

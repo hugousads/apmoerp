@@ -40,10 +40,13 @@ class Form extends Component
 
     protected function rules(): array
     {
+        $branchId = auth()->user()?->branch_id;
+
         return [
-            'bom_id' => ['required', 'exists:bills_of_materials,id'],
-            'product_id' => ['required', 'exists:products,id'],
-            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'bom_id' => ['required', new \App\Rules\BranchScopedExists('bills_of_materials', 'id', $branchId)],
+            'product_id' => ['required', new \App\Rules\BranchScopedExists('products', 'id', $branchId)],
+            'warehouse_id' => ['required', new \App\Rules\BranchScopedExists('warehouses', 'id', $branchId)],
             'quantity_planned' => ['required', 'numeric', 'min:0.01'],
             'status' => ['required', 'in:draft,planned,released,in_progress,completed,cancelled'],
             'priority' => ['required', 'in:low,normal,high,urgent'],

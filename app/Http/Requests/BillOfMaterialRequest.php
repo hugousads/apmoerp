@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Traits\HasMultilingualValidation;
+use App\Rules\BranchScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
 
 class BillOfMaterialRequest extends FormRequest
@@ -18,8 +19,11 @@ class BillOfMaterialRequest extends FormRequest
 
     public function rules(): array
     {
+        $branchId = $this->user()?->branch_id;
+
         return [
-            'product_id' => ['required', 'exists:products,id'],
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'product_id' => ['required', new BranchScopedExists('products', 'id', $branchId)],
             'name' => $this->multilingualString(required: true, max: 255),
             'name_ar' => $this->arabicName(required: false, max: 255),
             'description' => $this->unicodeText(required: false),
@@ -29,7 +33,7 @@ class BillOfMaterialRequest extends FormRequest
             'is_multi_level' => ['boolean'],
             'branch_id' => ['nullable', 'exists:branches,id'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.product_id' => ['required', new BranchScopedExists('products', 'id', $branchId)],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
             'items.*.scrap_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],

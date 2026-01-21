@@ -41,6 +41,8 @@ class Form extends Component
 
     public function getRules(): array
     {
+        $branchId = auth()->user()?->branch_id;
+
         return [
             'subject' => $this->multilingualString(required: true, max: 255),
             'priority' => 'required|in:low,medium,high,urgent',
@@ -50,13 +52,16 @@ class Form extends Component
             'department_id' => 'nullable|exists:departments,id',
             'cost_center_id' => 'nullable|exists:cost_centers,id',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'items.*.product_id' => ['required', new \App\Rules\BranchScopedExists('products', 'id', $branchId)],
             'items.*.quantity' => 'required|numeric|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.specifications' => $this->unicodeText(required: false),
         ];
     }
 
+    // Note: This property is a simplified fallback for real-time validation.
+    // Full validation including BranchScopedExists is in getRules() method.
     protected array $rules = [
         'subject' => 'required|string|max:255',
         'priority' => 'required|in:low,medium,high,urgent',
@@ -66,7 +71,7 @@ class Form extends Component
         'department_id' => 'nullable|exists:departments,id',
         'cost_center_id' => 'nullable|exists:cost_centers,id',
         'items' => 'required|array|min:1',
-        'items.*.product_id' => 'required|exists:products,id',
+        'items.*.product_id' => 'required|integer',
         'items.*.quantity' => 'required|numeric|min:1',
         'items.*.unit_price' => 'required|numeric|min:0',
         'items.*.specifications' => 'nullable|string',

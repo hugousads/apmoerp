@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Traits\HasMultilingualValidation;
+use App\Rules\BranchScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ProjectUpdateRequest extends FormRequest
@@ -19,12 +20,14 @@ class ProjectUpdateRequest extends FormRequest
     public function rules(): array
     {
         $projectId = $this->route('project') ? $this->route('project')->id : 'NULL';
+        $branchId = $this->user()?->branch_id;
 
         return [
             'code' => ['sometimes', 'required', 'string', 'max:50', 'unique:projects,code,'.$projectId],
             'name' => $this->multilingualString(required: false, max: 255), // 'sometimes' handled automatically
             'description' => $this->unicodeText(required: false),
-            'client_id' => ['nullable', 'exists:customers,id'],
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'client_id' => ['nullable', new BranchScopedExists('customers', 'id', $branchId, allowNull: true)],
             'manager_id' => ['sometimes', 'required', 'exists:users,id'],
             'start_date' => ['sometimes', 'required', 'date'],
             'end_date' => ['sometimes', 'required', 'date', 'after_or_equal:start_date'],

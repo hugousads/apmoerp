@@ -6,6 +6,7 @@ use App\Models\InventoryTransit;
 use App\Models\StockMovement;
 use App\Models\StockTransfer;
 use App\Models\StockTransferItem;
+use App\Rules\BranchScopedExists;
 use App\Traits\HandlesServiceErrors;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,10 +24,12 @@ class StockTransferService
      */
     public function createTransfer(array $data): StockTransfer
     {
-        // Input validation
+        $branchId = auth()->user()?->branch_id;
+
+        // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
         $validated = validator($data, [
-            'from_warehouse_id' => 'required|integer|exists:warehouses,id',
-            'to_warehouse_id' => 'required|integer|exists:warehouses,id|different:from_warehouse_id',
+            'from_warehouse_id' => ['required', 'integer', new BranchScopedExists('warehouses', 'id', $branchId)],
+            'to_warehouse_id' => ['required', 'integer', 'different:from_warehouse_id', new BranchScopedExists('warehouses', 'id', $branchId)],
             'from_branch_id' => 'nullable|integer|exists:branches,id',
             'to_branch_id' => 'nullable|integer|exists:branches,id',
             'transfer_date' => 'nullable|date',
@@ -38,7 +41,7 @@ class StockTransferService
             'insurance_cost' => 'nullable|numeric|min:0',
             'currency' => 'nullable|string|max:3',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.product_id' => ['required', 'integer', new BranchScopedExists('products', 'id', $branchId)],
             'items.*.qty' => 'required|numeric|min:0.001',
             'items.*.batch_number' => 'nullable|string|max:50',
             'items.*.expiry_date' => 'nullable|date',

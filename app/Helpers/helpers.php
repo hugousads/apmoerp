@@ -438,28 +438,51 @@ if (! function_exists('bcround')) {
             return '0';
         }
 
-        // V56-CRITICAL-01 FIX: Use absolute value approach with proper offset handling
-        // to achieve "half away from zero" rounding (matching PHP's standard round()).
-        // bcmath truncates toward zero, so we need to work with absolute values
-        // and then restore the sign to get correct results for negative numbers.
+        // V58-CRITICAL-01 FIX: Proper "half away from zero" rounding for both positive and negative values.
+        // This matches PHP's default round() behavior (PHP_ROUND_HALF_UP equivalent for positives,
+        // but rounds away from zero for negatives).
         //
-        // V57-CRITICAL-01 FIX: Added normalization to prevent "-0.00" display issue.
-        // When a small negative number rounds to zero, we should return "0.XX" not "-0.XX".
+        // Algorithm:
+        // 1. Determine sign and work with absolute value
+        // 2. Add offset (0.5 * 10^(-precision)) to absolute value
+        // 3. Truncate using bcadd with target precision (bcmath truncates toward zero)
+        // 4. Restore sign, handling the "-0.00" edge case
+        //
+        // This approach ensures:
+        // - bcround('1.235', 2) = '1.24' (rounds up)
+        // - bcround('-1.235', 2) = '-1.24' (rounds away from zero, i.e., more negative)
+        // - bcround('1.234', 2) = '1.23' (rounds down)
+        // - bcround('-1.234', 2) = '-1.23' (rounds toward zero)
+        // - bcround('-0.001', 2) = '0.00' (normalized, no -0.00)
+
         $isNegative = str_starts_with($value, '-');
         $absValue = $isNegative ? ltrim($value, '-') : $value;
 
-        // Add 0.5 * 10^(-precision) to achieve half-up rounding on absolute value
-        // e.g., for precision=2, add 0.005
-        $offset = '0.' . str_repeat('0', $precision) . '5';
-        $rounded = bcadd($absValue, $offset, $precision);
-
-        // V57-CRITICAL-01 FIX: Normalize result to avoid "-0.00" display
-        // If the rounded value is zero (or effectively zero), return positive zero
-        if (bccomp($rounded, '0', $precision) === 0) {
-            return $rounded; // Return positive zero format
+        // Validate the absolute value is a valid numeric string
+        if (! is_numeric($absValue)) {
+            return '0';
         }
 
-        // Restore sign if negative
+        // Calculate offset for half-up rounding: 0.5 * 10^(-precision)
+        // e.g., for precision=2, offset = '0.005'
+        $offset = '0.' . str_repeat('0', $precision) . '5';
+
+        // Add offset to absolute value. bcadd truncates toward zero at the given precision,
+        // which effectively implements half-up rounding.
+        // Need extra precision during addition to avoid premature truncation
+        $sumPrecision = $precision + 1;
+        $sum = bcadd($absValue, $offset, $sumPrecision);
+        
+        // Now truncate to the target precision using bcadd with '0'
+        $rounded = bcadd($sum, '0', $precision);
+
+        // Normalize result to avoid "-0.00" display issue
+        // If the rounded value is zero, return positive zero
+        if (bccomp($rounded, '0', $precision) === 0) {
+            return bcadd('0', '0', $precision); // Ensures proper format like "0.00"
+        }
+
+        // Restore sign if the original value was negative
         return $isNegative ? '-' . $rounded : $rounded;
     }
 }
