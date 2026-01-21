@@ -63,9 +63,9 @@ class ReportsController extends Controller
     /**
      * NEW-V15-CRITICAL-02 FIX: System performance report
      *
-     * V39-HIGH-02 / V43-HIGH-01 NOTE: Response times and slow query metrics require 
-     * integration with an APM solution (e.g., Laravel Telescope, Pulse, New Relic) 
-     * or custom middleware that logs request timings to a database. Currently only 
+     * V39-HIGH-02 / V43-HIGH-01 NOTE: Response times and slow query metrics require
+     * integration with an APM solution (e.g., Laravel Telescope, Pulse, New Relic)
+     * or custom middleware that logs request timings to a database. Currently only
      * real-time memory metrics are available. For production monitoring, consider:
      * - Installing Laravel Telescope for development debugging
      * - Installing Laravel Pulse for production performance monitoring
@@ -122,7 +122,8 @@ class ReportsController extends Controller
             $value /= 1024.0;
             $i++;
         }
-        return round($value, 2) . ' ' . $units[$i];
+
+        return round($value, 2).' '.$units[$i];
     }
 
     /**
@@ -420,6 +421,7 @@ class ReportsController extends Controller
             // V31-HIGH-03 FIX: Use sale_date for aging and filter non-revenue statuses
             // Explicitly select sale_date to ensure the proper date is used for aging
             // V37-CRIT-03 FIX: Exclude soft-deleted records using whereNull('deleted_at')
+            // SECURITY (V58-SQL-01): whereRaw uses hardcoded SQL condition, no user input
             $query = DB::table('sales')
                 ->select(['id', 'total_amount', 'paid_amount', 'sale_date'])
                 ->whereNull('deleted_at')

@@ -112,6 +112,7 @@ class Index extends Component
                 'suppliers.name as supplier_name',
                 'purchases.total_amount as grand_total',
                 'purchases.paid_amount as amount_paid',
+                // SECURITY (V58-SQL-01): DB::raw uses hardcoded column names, no user input
                 DB::raw('(purchases.total_amount - purchases.paid_amount) as amount_due'),
                 'purchases.status',
                 'branches.name as branch_name',
