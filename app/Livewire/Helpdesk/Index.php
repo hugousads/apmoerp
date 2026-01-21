@@ -87,8 +87,8 @@ class Index extends Component
         $user = auth()->user();
         $branchId = $user->branch_id;
 
-        // V55-CRITICAL-05 FIX: Branch scope is now automatically applied via HasBranch trait
-        // The manual branch filter is kept for additional explicitness but the trait handles it
+        // V55-CRITICAL-05 FIX: Branch scope is now automatically applied via HasBranch trait.
+        // The previous manual branch filter has been removed as the trait handles branch scoping.
         $query = Ticket::with(['customer', 'assignedAgent', 'category', 'priority'])
             ->when($this->search, fn ($q) => $q->where(function ($query) {
                 $query->where('ticket_number', 'like', "%{$this->search}%")
