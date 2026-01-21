@@ -15,7 +15,9 @@ use App\Models\Purchase;
 use App\Models\RentalContract;
 use App\Models\RentalInvoice;
 use App\Models\RentalUnit;
+use App\Models\ReportTemplate;
 use App\Models\Sale;
+use App\Models\ScheduledReport;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\Vehicle;
@@ -27,7 +29,9 @@ use App\Policies\NotificationPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\PurchasePolicy;
 use App\Policies\RentalPolicy;
+use App\Policies\ReportTemplatePolicy;
 use App\Policies\SalePolicy;
+use App\Policies\ScheduledReportPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\VehiclePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -58,6 +62,10 @@ class AuthServiceProvider extends ServiceProvider
         BillOfMaterial::class => ManufacturingPolicy::class,
         ProductionOrder::class => ManufacturingPolicy::class,
         WorkCenter::class => ManufacturingPolicy::class,
+
+        // V58-AUTH-01: Reporting domain policies for scheduled reports and templates
+        ScheduledReport::class => ScheduledReportPolicy::class,
+        ReportTemplate::class => ReportTemplatePolicy::class,
     ];
 
     public function boot(): void
