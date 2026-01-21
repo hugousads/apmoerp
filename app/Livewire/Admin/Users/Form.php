@@ -150,6 +150,12 @@ class Form extends Component
 
     public function save(): mixed
     {
+        // V58-HIGH-01 FIX: Re-authorize on mutation to prevent direct method calls
+        $authUser = Auth::user();
+        if (! $authUser || ! $authUser->can('users.manage')) {
+            abort(403);
+        }
+
         $validated = $this->validate();
         $formData = $this->form;
         $userId = $this->userId;
