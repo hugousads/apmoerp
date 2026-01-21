@@ -91,9 +91,10 @@ class InventoryService implements InventoryServiceInterface
                     'meta' => [],
                 ];
 
+                // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
                 $validator = $this->validator->make($data, [
-                    'product_id' => ['required', 'integer', 'exists:products,id'],
-                    'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+                    'product_id' => ['required', 'integer', new \App\Rules\BranchScopedExists('products', 'id', $branchId)],
+                    'warehouse_id' => ['required', 'integer', new \App\Rules\BranchScopedExists('warehouses', 'id', $branchId)],
                     'qty' => ['required', 'numeric'],
                     'direction' => ['required', 'in:in,out'],
                 ]);
@@ -171,6 +172,7 @@ class InventoryService implements InventoryServiceInterface
         return $this->handleServiceOperation(
             callback: function () use ($data) {
                 return \Illuminate\Support\Facades\DB::transaction(function () use ($data) {
+                    $branchId = $this->currentBranchId();
                     $payload = [
                         'product_id' => $data['product_id'] ?? null,
                         'warehouse_id' => $data['warehouse_id'] ?? null,
@@ -182,9 +184,10 @@ class InventoryService implements InventoryServiceInterface
                         'notes' => $data['notes'] ?? $data['reason'] ?? null,
                     ];
 
+                    // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
                     $validator = $this->validator->make($payload, [
-                        'product_id' => ['required', 'integer', 'exists:products,id'],
-                        'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+                        'product_id' => ['required', 'integer', new \App\Rules\BranchScopedExists('products', 'id', $branchId)],
+                        'warehouse_id' => ['required', 'integer', new \App\Rules\BranchScopedExists('warehouses', 'id', $branchId)],
                         'direction' => ['required', 'in:in,out'],
                         'qty' => ['required', 'numeric', 'not_in:0'],
                     ]);

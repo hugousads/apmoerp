@@ -8,6 +8,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
 use App\Models\SupplierPerformanceMetric;
+use App\Rules\BranchScopedExists;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -34,12 +35,14 @@ class PurchaseReturnService
      */
     public function createReturn(array $data): PurchaseReturn
     {
-        // Input validation
+        $branchId = Auth::user()?->branch_id;
+
+        // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
         $validated = validator($data, [
-            'purchase_id' => 'required|integer|exists:purchases,id',
-            'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            'purchase_id' => ['required', 'integer', new BranchScopedExists('purchases', 'id', $branchId)],
+            'supplier_id' => ['nullable', 'integer', new BranchScopedExists('suppliers', 'id', $branchId, allowNull: true)],
             'branch_id' => 'nullable|integer|exists:branches,id',
-            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
+            'warehouse_id' => ['nullable', 'integer', new BranchScopedExists('warehouses', 'id', $branchId, allowNull: true)],
             'grn_id' => 'nullable|integer|exists:goods_received_notes,id',
             'return_type' => 'nullable|in:full,partial,defective,excess',
             'reason' => 'required|string|max:255',
@@ -49,7 +52,7 @@ class PurchaseReturnService
             'tracking_number' => 'nullable|string|max:100',
             'courier_name' => 'nullable|string|max:100',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.product_id' => ['required', 'integer', new BranchScopedExists('products', 'id', $branchId)],
             // V24-CRIT-04 FIX: Add required validation for purchase_item_id
             'items.*.purchase_item_id' => 'required|integer|exists:purchase_items,id',
             'items.*.qty_returned' => 'required|numeric|min:0.001',

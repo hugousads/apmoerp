@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnItem;
 use App\Models\StockMovement;
+use App\Rules\BranchScopedExists;
 use App\Traits\HandlesServiceErrors;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -37,13 +38,15 @@ class SalesReturnService
      */
     public function createReturn(array $data): SalesReturn
     {
-        // Input validation
+        $branchId = auth()->user()?->branch_id;
+
+        // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
         // V34-HIGH-01 FIX: Add 'distinct' validation to prevent duplicate sale_item_id which could
         // allow over-returning items if the same sale_item_id is repeated across multiple lines
         $validated = validator($data, [
-            'sale_id' => 'required|integer|exists:sales,id',
+            'sale_id' => ['required', 'integer', new BranchScopedExists('sales', 'id', $branchId)],
             'branch_id' => 'nullable|integer|exists:branches,id',
-            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
+            'warehouse_id' => ['nullable', 'integer', new BranchScopedExists('warehouses', 'id', $branchId, allowNull: true)],
             'reason' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'refund_method' => 'nullable|in:original,cash,bank_transfer,credit,store_credit',
