@@ -44,10 +44,13 @@ class Form extends Component
             $uniqueRule .= ','.$this->serial->id;
         }
 
+        $branchId = auth()->user()?->branch_id;
+
         return [
-            'product_id' => 'required|exists:products,id',
-            'warehouse_id' => 'nullable|exists:warehouses,id',
-            'batch_id' => 'nullable|exists:inventory_batches,id',
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'product_id' => ['required', new \App\Rules\BranchScopedExists('products', 'id', $branchId)],
+            'warehouse_id' => ['nullable', new \App\Rules\BranchScopedExists('warehouses', 'id', $branchId, allowNull: true)],
+            'batch_id' => ['nullable', new \App\Rules\BranchScopedExists('inventory_batches', 'id', $branchId, allowNull: true)],
             'serial_number' => ['required', 'string', 'max:255', $uniqueRule],
             'unit_cost' => 'required|numeric|min:0',
             'warranty_start' => 'nullable|date',

@@ -40,8 +40,11 @@ class Form extends Component
 
     protected function rules(): array
     {
+        $branchId = $this->determineBranchId($this->income);
+
         return [
-            'category_id' => 'nullable|exists:income_categories,id',
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'category_id' => ['nullable', new \App\Rules\BranchScopedExists('income_categories', 'id', $branchId, allowNull: true)],
             'reference_number' => 'nullable|string|max:100',
             'income_date' => 'required|date',
             'amount' => 'required|numeric|min:0',
