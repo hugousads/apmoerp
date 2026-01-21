@@ -136,18 +136,10 @@ class Form extends Component
             'discount_total' => 'nullable|numeric|min:0',
             'shipping_total' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
+            // V57-CRITICAL-03 FIX: Use BranchScopedExists for efficient branch-aware validation
             'items.*.product_id' => [
                 'required',
-                'exists:products,id',
-                // V57-CRITICAL-03 FIX: Add branch validation for product_id
-                function ($attribute, $value, $fail) use ($branchId) {
-                    if ($value && $branchId) {
-                        $product = Product::find($value);
-                        if ($product && $product->branch_id && $product->branch_id !== $branchId) {
-                            $fail(__('The selected product does not belong to your branch.'));
-                        }
-                    }
-                },
+                new \App\Rules\BranchScopedExists('products', 'id', $branchId),
             ],
             'items.*.qty' => 'required|numeric|min:0.0001',
             'items.*.unit_price' => 'required|numeric|min:0',
