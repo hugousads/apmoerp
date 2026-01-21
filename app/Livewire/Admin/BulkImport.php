@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Services\ImportService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -12,6 +14,7 @@ use Livewire\WithFileUploads;
 
 class BulkImport extends Component
 {
+    use AuthorizesRequests;
     use WithFileUploads;
 
     public ?string $entityType = null;
@@ -51,6 +54,12 @@ class BulkImport extends Component
 
     public function mount(): void
     {
+        // V57-HIGH-01 FIX: Add authorization for bulk import
+        $user = Auth::user();
+        if (! $user || ! $user->can('import.manage')) {
+            abort(403);
+        }
+        
         $this->entityType = request()->query('type', 'products');
         $moduleId = request()->query('module');
         if ($moduleId) {
