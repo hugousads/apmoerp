@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Rules\BranchScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CompatibilityAttachRequest extends FormRequest
@@ -15,9 +16,12 @@ class CompatibilityAttachRequest extends FormRequest
 
     public function rules(): array
     {
+        $branchId = $this->user()?->branch_id;
+
         return [
-            'product_id' => ['required', 'integer', 'exists:products,id'],
-            'compatible_with_id' => ['required', 'integer', 'exists:products,id'],
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'product_id' => ['required', 'integer', new BranchScopedExists('products', 'id', $branchId)],
+            'compatible_with_id' => ['required', 'integer', new BranchScopedExists('products', 'id', $branchId)],
         ];
     }
 }

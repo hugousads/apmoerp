@@ -82,12 +82,15 @@ class Form extends Component
     {
         $this->authorize('warehouse.manage');
 
+        $branchId = auth()->user()?->branch_id;
+
+        // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
         $this->validate([
-            'warehouseId' => 'required|exists:warehouses,id',
+            'warehouseId' => ['required', new \App\Rules\BranchScopedExists('warehouses', 'id', $branchId)],
             'reason' => 'required|string|max:255',
             'note' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => ['required', new \App\Rules\BranchScopedExists('products', 'id', $branchId)],
             'items.*.qty' => 'required|numeric|not_in:0',
         ], [
             'items.required' => 'At least one item is required',

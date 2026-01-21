@@ -186,6 +186,9 @@ class Form extends Component
 
     public function save(): mixed
     {
+        // V58-HIGH-01 FIX: Re-authorize on mutation to prevent direct method calls
+        $this->authorize($this->project ? 'projects.edit' : 'projects.create');
+
         // V30-HIGH-03 FIX: Wrap code generation + create in DB transaction
         // lockForUpdate() has no effect outside a transaction
         return DB::transaction(function () {

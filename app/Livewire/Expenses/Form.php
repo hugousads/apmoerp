@@ -45,8 +45,11 @@ class Form extends Component
 
     protected function rules(): array
     {
+        $branchId = auth()->user()?->branch_id;
+
         return [
-            'category_id' => 'nullable|exists:expense_categories,id',
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'category_id' => ['nullable', new \App\Rules\BranchScopedExists('expense_categories', 'id', $branchId, allowNull: true)],
             'reference_number' => 'nullable|string|max:100',
             'expense_date' => 'required|date',
             'amount' => 'required|numeric|min:0',

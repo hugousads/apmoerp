@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Rules\BranchScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
 
 class FixedAssetUpdateRequest extends FormRequest
@@ -16,6 +17,7 @@ class FixedAssetUpdateRequest extends FormRequest
     public function rules(): array
     {
         $assetId = $this->route('asset') ? $this->route('asset')->id : 'NULL';
+        $branchId = $this->user()?->branch_id;
 
         return [
             'asset_code' => ['sometimes', 'required', 'string', 'max:50', 'unique:fixed_assets,asset_code,'.$assetId],
@@ -34,7 +36,8 @@ class FixedAssetUpdateRequest extends FormRequest
             'status' => ['sometimes', 'required', 'in:active,inactive,disposed,under_maintenance'],
             'disposal_date' => ['nullable', 'date'],
             'disposal_amount' => ['nullable', 'numeric', 'min:0'],
-            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
+            'supplier_id' => ['nullable', new BranchScopedExists('suppliers', 'id', $branchId, allowNull: true)],
             'serial_number' => ['nullable', 'string', 'max:100'],
             'model' => ['nullable', 'string', 'max:100'],
             'manufacturer' => ['nullable', 'string', 'max:100'],
