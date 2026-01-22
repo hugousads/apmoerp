@@ -78,6 +78,9 @@ class Form extends Component
 
     public function save(): RedirectResponse
     {
+        // V58-HIGH-01 FIX: Re-authorize on mutation to prevent direct method calls
+        $this->authorize($this->isEdit ? 'documents.edit' : 'documents.create');
+
         if ($this->isEdit) {
             $this->validate([
                 'title' => $this->multilingualString(required: true, max: 255),
