@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Traits\HasMultilingualValidation;
+use App\Rules\BranchScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ProductUpdateRequest extends FormRequest
@@ -27,8 +28,9 @@ class ProductUpdateRequest extends FormRequest
             'default_price' => ['sometimes', 'numeric', 'min:0'],
             'cost' => ['sometimes', 'numeric', 'min:0'],
             'description' => $this->unicodeText(required: false),
-            'category_id' => ['nullable', 'exists:product_categories,id'],
-            'tax_id' => ['nullable', 'exists:taxes,id'],
+            // V57-CRITICAL-03 FIX: Use BranchScopedExists to prevent cross-branch references
+            'category_id' => ['nullable', new BranchScopedExists('product_categories', 'id', null, true)],
+            'tax_id' => ['nullable', new BranchScopedExists('taxes', 'id', null, true)],
             // Inventory tracking fields
             'min_stock' => ['sometimes', 'numeric', 'min:0'],
             'max_stock' => ['sometimes', 'numeric', 'min:0'],
