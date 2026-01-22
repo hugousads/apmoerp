@@ -27,14 +27,12 @@ class UsersSeeder extends Seeder
             ['email' => 'admin@ghanem-erp.com'],
             [
                 'name' => 'System Administrator',
-                'name_ar' => 'مدير النظام',
                 'email' => 'admin@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0001',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'en',
+                'locale' => 'en',
             ]
         );
         $superAdmin->assignRole('Super Admin');
@@ -50,14 +48,12 @@ class UsersSeeder extends Seeder
             ['email' => 'branch.admin@ghanem-erp.com'],
             [
                 'name' => 'Branch Administrator',
-                'name_ar' => 'مدير الفرع',
                 'email' => 'branch.admin@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0002',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $branchAdmin->assignRole('Admin');
@@ -70,14 +66,12 @@ class UsersSeeder extends Seeder
             ['email' => 'manager@ghanem-erp.com'],
             [
                 'name' => 'Ahmed Hassan',
-                'name_ar' => 'أحمد حسن',
                 'email' => 'manager@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0003',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $manager->assignRole('Manager');
@@ -90,14 +84,12 @@ class UsersSeeder extends Seeder
             ['email' => 'accountant@ghanem-erp.com'],
             [
                 'name' => 'Sarah Mohamed',
-                'name_ar' => 'سارة محمد',
                 'email' => 'accountant@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0004',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $accountant->assignRole('Accountant');
@@ -110,14 +102,12 @@ class UsersSeeder extends Seeder
             ['email' => 'hr@ghanem-erp.com'],
             [
                 'name' => 'Fatima Ali',
-                'name_ar' => 'فاطمة علي',
                 'email' => 'hr@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0005',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $hrManager->assignRole('HR Manager');
@@ -130,14 +120,12 @@ class UsersSeeder extends Seeder
             ['email' => 'sales.manager@ghanem-erp.com'],
             [
                 'name' => 'Omar Khaled',
-                'name_ar' => 'عمر خالد',
                 'email' => 'sales.manager@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0006',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $salesManager->assignRole('Sales Manager');
@@ -150,14 +138,12 @@ class UsersSeeder extends Seeder
             ['email' => 'salesperson@ghanem-erp.com'],
             [
                 'name' => 'Mohamed Ibrahim',
-                'name_ar' => 'محمد إبراهيم',
                 'email' => 'salesperson@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0007',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $salesperson->assignRole('Salesperson');
@@ -170,14 +156,12 @@ class UsersSeeder extends Seeder
             ['email' => 'warehouse.manager@ghanem-erp.com'],
             [
                 'name' => 'Khaled Mahmoud',
-                'name_ar' => 'خالد محمود',
                 'email' => 'warehouse.manager@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0008',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $warehouseManager->assignRole('Warehouse Manager');
@@ -190,14 +174,12 @@ class UsersSeeder extends Seeder
             ['email' => 'warehouse.staff@ghanem-erp.com'],
             [
                 'name' => 'Ali Saeed',
-                'name_ar' => 'علي سعيد',
                 'email' => 'warehouse.staff@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0009',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $warehouseStaff->assignRole('Warehouse Staff');
@@ -210,14 +192,12 @@ class UsersSeeder extends Seeder
             ['email' => 'cashier@ghanem-erp.com'],
             [
                 'name' => 'Nour Ahmed',
-                'name_ar' => 'نور أحمد',
                 'email' => 'cashier@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0010',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $cashier->assignRole('Cashier');
@@ -230,14 +210,12 @@ class UsersSeeder extends Seeder
             ['email' => 'employee@ghanem-erp.com'],
             [
                 'name' => 'Hassan Youssef',
-                'name_ar' => 'حسن يوسف',
                 'email' => 'employee@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0011',
                 'branch_id' => $mainBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $employee->assignRole('Employee');
@@ -250,14 +228,12 @@ class UsersSeeder extends Seeder
             ['email' => 'downtown.cashier@ghanem-erp.com'],
             [
                 'name' => 'Mona Fathy',
-                'name_ar' => 'منى فتحي',
                 'email' => 'downtown.cashier@ghanem-erp.com',
                 'password' => Hash::make('password'),
                 'phone' => '+20 100 000 0012',
                 'branch_id' => $downtownBranch?->id,
                 'is_active' => true,
-                'email_verified_at' => now(),
-                'language' => 'ar',
+                'locale' => 'ar',
             ]
         );
         $downtownCashier->assignRole('Cashier');
