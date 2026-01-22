@@ -43,7 +43,8 @@ class PurchaseReturnService
             'supplier_id' => ['nullable', 'integer', new BranchScopedExists('suppliers', 'id', $branchId, allowNull: true)],
             'branch_id' => 'nullable|integer|exists:branches,id',
             'warehouse_id' => ['nullable', 'integer', new BranchScopedExists('warehouses', 'id', $branchId, allowNull: true)],
-            'grn_id' => 'nullable|integer|exists:goods_received_notes,id',
+            // V57-CRITICAL-03 FIX: Use BranchScopedExists for grn_id
+            'grn_id' => ['nullable', 'integer', new BranchScopedExists('goods_received_notes', 'id', $branchId, allowNull: true)],
             'return_type' => 'nullable|in:full,partial,defective,excess',
             'reason' => 'required|string|max:255',
             'notes' => 'nullable|string',

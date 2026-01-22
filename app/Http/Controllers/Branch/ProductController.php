@@ -103,12 +103,13 @@ class ProductController extends Controller
         abort_if($product->branch_id !== $branchId, 404, 'Product not found in this branch');
 
         // Basic validation
+        // V57-CRITICAL-03 FIX: Use BranchScopedExists to prevent cross-branch references
         $data = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'sku' => 'nullable|string|max:100',
             'barcode' => 'nullable|string|max:100',
-            'category_id' => 'nullable|exists:product_categories,id',
-            'tax_id' => 'nullable|exists:taxes,id',
+            'category_id' => ['nullable', new BranchScopedExists('product_categories', 'id', $branchId, true)],
+            'tax_id' => ['nullable', new BranchScopedExists('taxes', 'id', $branchId, true)],
             'default_price' => 'sometimes|required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
