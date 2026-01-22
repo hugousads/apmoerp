@@ -299,6 +299,9 @@ class Reconciliation extends Component
      */
     public function complete(): void
     {
+        // V58-HIGH-01 FIX: Re-authorize on mutation to prevent direct method calls
+        $this->authorize('banking.reconcile');
+
         // V28-MEDIUM-04 FIX: Use bccomp to compare string difference with tolerance threshold
         $negativeThreshold = '-'.self::TOLERANCE_THRESHOLD;
         if (bccomp($this->difference, self::TOLERANCE_THRESHOLD, 4) > 0 || bccomp($this->difference, $negativeThreshold, 4) < 0) {
