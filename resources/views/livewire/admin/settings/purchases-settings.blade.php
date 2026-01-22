@@ -17,10 +17,10 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">{{ __('Invoice Prefix') }}</label>
-                    <input type="text" wire:model="purchase_invoice_prefix" class="erp-input" maxlength="10">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">{{ __('Purchase Order Prefix') }}</label>
+                    <input type="text" wire:model="purchase_order_prefix" class="erp-input" maxlength="10">
                     <p class="text-xs text-slate-500 mt-1">{{ __('Example: PO-, PINV-') }}</p>
-                    @error('purchase_invoice_prefix') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    @error('purchase_order_prefix') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
 
                 <div>

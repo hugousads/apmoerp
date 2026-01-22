@@ -187,6 +187,12 @@ return [
      * Inventory management configuration
      */
     'inventory' => [
+        'allow_negative_stock' => [
+            'label' => 'Allow Negative Stock',
+            'type' => 'boolean',
+            'default' => false,
+            'description' => 'Allow stock to go negative when insufficient quantity available',
+        ],
         'default_costing_method' => [
             'label' => 'Default Costing Method',
             'type' => 'select',

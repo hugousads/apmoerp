@@ -6,6 +6,7 @@ namespace App\Livewire\Admin\Settings;
 
 use App\Models\Media;
 use App\Models\SystemSetting;
+use App\Services\SettingsService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,7 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class UnifiedSettings extends Component
 {
+    protected SettingsService $settings;
     public string $activeTab = 'general';
 
     public array $tabs = [
@@ -197,6 +199,8 @@ class UnifiedSettings extends Component
 
     public function mount(): void
     {
+        $this->settings = app(SettingsService::class);
+
         $user = Auth::user();
         if (! $user || ! $user->can('settings.view')) {
             abort(403);
@@ -213,112 +217,164 @@ class UnifiedSettings extends Component
         $this->loadSettings();
     }
 
+    /**
+     * Helper to properly cast boolean values from settings
+     * Handles cases where value might be string "0", "false", or actual boolean
+     */
+    protected function castToBool(mixed $value, bool $default = false): bool
+    {
+        if ($value === null) {
+            return $default;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            $lower = strtolower($value);
+            if (in_array($lower, ['0', 'false', 'no', 'off', ''], true)) {
+                return false;
+            }
+            if (in_array($lower, ['1', 'true', 'yes', 'on'], true)) {
+                return true;
+            }
+        }
+
+        return (bool) $value;
+    }
+
     protected function loadSettings(): void
     {
-        // Bulk load all settings for performance
-        $settings = Cache::remember('system_settings_all', 3600, function () {
-            return SystemSetting::pluck('value', 'key')->toArray();
-        });
+        // Use SettingsService for proper type handling instead of raw pluck
+        // This ensures boolean values are properly resolved
+        $allSettings = $this->settings->all();
 
-        // Load general settings
-        $this->company_name = $settings['company.name'] ?? config('app.name', 'HugouERP');
-        $this->company_email = $settings['company.email'] ?? '';
-        $this->company_phone = $settings['company.phone'] ?? '';
-        $this->timezone = $settings['app.timezone'] ?? config('app.timezone', 'UTC');
-        $this->date_format = $settings['app.date_format'] ?? 'Y-m-d';
-        $this->default_currency = $settings['general.default_currency'] ?? 'USD';
+        // Load general settings - use canonical key names from config/settings.php
+        $this->company_name = $allSettings['general.company_name']
+            ?? $allSettings['company.name']  // Legacy support
+            ?? config('app.name', 'HugouERP');
+        $this->company_email = $allSettings['general.company_email']
+            ?? $allSettings['company.email']  // Legacy support
+            ?? '';
+        $this->company_phone = $allSettings['general.company_phone']
+            ?? $allSettings['company.phone']  // Legacy support
+            ?? '';
+        $this->timezone = $allSettings['branding.timezone']
+            ?? $allSettings['app.timezone']  // Legacy support
+            ?? config('app.timezone', 'UTC');
+        $this->date_format = $allSettings['branding.date_format']
+            ?? $allSettings['app.date_format']  // Legacy support
+            ?? 'Y-m-d';
+        $this->default_currency = $allSettings['general.default_currency'] ?? 'USD';
 
         // Load branding settings
-        $this->branding_logo_id = isset($settings['branding.logo_id']) ? (int) $settings['branding.logo_id'] : null;
-        $this->branding_favicon_id = isset($settings['branding.favicon_id']) ? (int) $settings['branding.favicon_id'] : null;
-        $this->branding_logo = $settings['branding.logo'] ?? '';  // Legacy support
-        $this->branding_favicon = $settings['branding.favicon'] ?? '';  // Legacy support
-        $this->branding_primary_color = $settings['branding.primary_color'] ?? '#10b981';
-        $this->branding_secondary_color = $settings['branding.secondary_color'] ?? '#3b82f6';
-        $this->branding_tagline = $settings['branding.tagline'] ?? '';
+        $this->branding_logo_id = isset($allSettings['branding.logo_id']) ? (int) $allSettings['branding.logo_id'] : null;
+        $this->branding_favicon_id = isset($allSettings['branding.favicon_id']) ? (int) $allSettings['branding.favicon_id'] : null;
+        $this->branding_logo = $allSettings['branding.logo'] ?? '';
+        $this->branding_favicon = $allSettings['branding.favicon'] ?? '';
+        $this->branding_primary_color = $allSettings['branding.primary_color'] ?? '#10b981';
+        $this->branding_secondary_color = $allSettings['branding.secondary_color'] ?? '#3b82f6';
+        $this->branding_tagline = $allSettings['branding.tagline'] ?? '';
 
-        // Load inventory settings
-        $this->inventory_costing_method = $settings['inventory.costing_method'] ?? 'FIFO';
-        $this->stock_alert_threshold = (int) ($settings['inventory.stock_alert_threshold'] ?? 10);
-        $this->use_per_product_threshold = (bool) ($settings['inventory.use_per_product_threshold'] ?? true);
+        // Load inventory settings - use canonical key names from config/settings.php
+        $this->inventory_costing_method = $allSettings['inventory.default_costing_method']
+            ?? $allSettings['inventory.costing_method']  // Legacy support
+            ?? 'FIFO';
+        $this->stock_alert_threshold = (int) ($allSettings['inventory.stock_alert_threshold'] ?? 10);
+        $this->use_per_product_threshold = $this->castToBool($allSettings['inventory.use_per_product_threshold'] ?? null, true);
 
-        // Load POS settings
-        $this->pos_allow_negative_stock = (bool) ($settings['pos.allow_negative_stock'] ?? false);
-        $this->pos_max_discount_percent = (int) ($settings['pos.max_discount_percent'] ?? 20);
-        $this->pos_auto_print_receipt = (bool) ($settings['pos.auto_print_receipt'] ?? true);
-        $this->pos_rounding_rule = $settings['pos.rounding_rule'] ?? 'none';
+        // Load POS settings - Also update inventory.allow_negative_stock for services
+        $this->pos_allow_negative_stock = $this->castToBool($allSettings['pos.allow_negative_stock'] ?? null, false);
+        $this->pos_max_discount_percent = (int) ($allSettings['pos.max_discount_percent'] ?? 20);
+        $this->pos_auto_print_receipt = $this->castToBool($allSettings['pos.auto_print_receipt'] ?? null, true);
+        $this->pos_rounding_rule = $allSettings['pos.rounding_rule'] ?? 'none';
 
         // Load accounting settings
-        $this->accounting_coa_template = $settings['accounting.coa_template'] ?? 'standard';
+        $this->accounting_coa_template = $allSettings['accounting.default_coa_template']
+            ?? $allSettings['accounting.coa_template']  // Legacy support
+            ?? 'standard';
 
         // Load HRM settings
-        $this->hrm_working_days_per_week = (int) ($settings['hrm.working_days_per_week'] ?? 5);
-        $this->hrm_working_hours_per_day = decimal_float($settings['hrm.working_hours_per_day'] ?? 8.0);
-        $this->hrm_late_arrival_threshold = (int) ($settings['hrm.late_arrival_threshold'] ?? 15);
-        $this->hrm_transport_allowance_type = $settings['hrm.transport_allowance_type'] ?? 'percentage';
-        $this->hrm_transport_allowance_value = decimal_float($settings['hrm.transport_allowance_value'] ?? 10.0);
-        $this->hrm_housing_allowance_type = $settings['hrm.housing_allowance_type'] ?? 'percentage';
-        $this->hrm_housing_allowance_value = decimal_float($settings['hrm.housing_allowance_value'] ?? 0.0);
-        $this->hrm_meal_allowance = decimal_float($settings['hrm.meal_allowance'] ?? 0.0);
-        $this->hrm_health_insurance_deduction = decimal_float($settings['hrm.health_insurance_deduction'] ?? 0.0);
+        $this->hrm_working_days_per_week = (int) ($allSettings['hrm.working_days_per_week'] ?? 5);
+        $this->hrm_working_hours_per_day = decimal_float($allSettings['hrm.working_hours_per_day'] ?? 8.0);
+        $this->hrm_late_arrival_threshold = (int) ($allSettings['hrm.late_arrival_threshold'] ?? 15);
+        $this->hrm_transport_allowance_type = $allSettings['hrm.transport_allowance_type'] ?? 'percentage';
+        $this->hrm_transport_allowance_value = decimal_float($allSettings['hrm.transport_allowance_value'] ?? 10.0);
+        $this->hrm_housing_allowance_type = $allSettings['hrm.housing_allowance_type'] ?? 'percentage';
+        $this->hrm_housing_allowance_value = decimal_float($allSettings['hrm.housing_allowance_value'] ?? 0.0);
+        $this->hrm_meal_allowance = decimal_float($allSettings['hrm.meal_allowance'] ?? 0.0);
+        $this->hrm_health_insurance_deduction = decimal_float($allSettings['hrm.health_insurance_deduction'] ?? 0.0);
 
         // Load rental settings
-        $this->rental_grace_period_days = (int) ($settings['rental.grace_period_days'] ?? 5);
-        $this->rental_penalty_type = $settings['rental.penalty_type'] ?? 'percentage';
-        $this->rental_penalty_value = decimal_float($settings['rental.penalty_value'] ?? 5.0);
+        $this->rental_grace_period_days = (int) ($allSettings['rental.grace_period_days'] ?? 5);
+        $this->rental_penalty_type = $allSettings['rental.penalty_type'] ?? 'percentage';
+        $this->rental_penalty_value = decimal_float($allSettings['rental.penalty_value'] ?? 5.0);
 
         // Load sales settings
-        $this->sales_payment_terms_days = (int) ($settings['sales.payment_terms_days'] ?? 30);
-        $this->sales_invoice_prefix = $settings['sales.invoice_prefix'] ?? 'INV-';
-        $this->sales_invoice_starting_number = (int) ($settings['sales.invoice_starting_number'] ?? 1000);
+        $this->sales_payment_terms_days = (int) ($allSettings['sales.default_payment_terms']
+            ?? $allSettings['sales.payment_terms_days']  // Legacy support
+            ?? 30);
+        $this->sales_invoice_prefix = $allSettings['sales.invoice_prefix'] ?? 'INV-';
+        $this->sales_invoice_starting_number = (int) ($allSettings['sales.invoice_starting_number'] ?? 1000);
 
         // Load branch settings
-        $this->multi_branch = (bool) ($settings['system.multi_branch'] ?? false);
-        $this->require_branch_selection = (bool) ($settings['system.require_branch_selection'] ?? true);
+        $this->multi_branch = $this->castToBool($allSettings['system.multi_branch'] ?? null, false);
+        $this->require_branch_selection = $this->castToBool($allSettings['system.require_branch_selection'] ?? null, true);
 
         // Load security settings (supporting legacy key for backward compatibility)
-        $this->require_2fa = (bool) ($settings['security.2fa_required']
-            ?? $settings['security.require_2fa']
-            ?? false);
-        $this->session_timeout = (int) ($settings['security.session_timeout'] ?? 120);
-        $this->enable_audit_log = (bool) ($settings['security.enable_audit_log'] ?? true);
+        $this->require_2fa = $this->castToBool(
+            $allSettings['security.2fa_required'] ?? $allSettings['security.require_2fa'] ?? null,
+            false
+        );
+        $this->session_timeout = (int) ($allSettings['security.session_timeout'] ?? 120);
+        $this->enable_audit_log = $this->castToBool($allSettings['security.enable_audit_log'] ?? null, true);
 
         // Load advanced settings
-        $this->enable_api = (bool) ($settings['advanced.enable_api'] ?? true);
-        $this->enable_webhooks = (bool) ($settings['advanced.enable_webhooks'] ?? false);
-        $this->cache_ttl = (int) ($settings['advanced.cache_ttl'] ?? 3600);
+        $this->enable_api = $this->castToBool($allSettings['advanced.enable_api'] ?? null, true);
+        $this->enable_webhooks = $this->castToBool($allSettings['advanced.enable_webhooks'] ?? null, false);
+        $this->cache_ttl = (int) ($allSettings['advanced.cache_ttl'] ?? 3600);
 
         // Load backup settings
-        $this->auto_backup = (bool) ($settings['backup.auto_backup'] ?? false);
-        $this->backup_frequency = $settings['backup.frequency'] ?? 'daily';
-        $this->backup_retention_days = (int) ($settings['backup.retention_days'] ?? 30);
-        $this->backup_storage = $settings['backup.storage'] ?? 'local';
+        $this->auto_backup = $this->castToBool($allSettings['backup.auto_backup'] ?? null, false);
+        $this->backup_frequency = $allSettings['backup.frequency'] ?? 'daily';
+        $this->backup_retention_days = (int) ($allSettings['backup.retention_days'] ?? 30);
+        $this->backup_storage = $allSettings['backup.storage'] ?? 'local';
 
         // Load notification settings
-        $this->notifications_low_stock = (bool) ($settings['notifications.low_stock'] ?? true);
-        $this->notifications_payment_due = (bool) ($settings['notifications.payment_due'] ?? true);
-        $this->notifications_new_order = (bool) ($settings['notifications.new_order'] ?? true);
+        $this->notifications_low_stock = $this->castToBool($allSettings['notifications.low_stock_enabled']
+            ?? $allSettings['notifications.low_stock']  // Legacy support
+            ?? null, true);
+        $this->notifications_payment_due = $this->castToBool($allSettings['notifications.payment_due_enabled']
+            ?? $allSettings['notifications.payment_due']  // Legacy support
+            ?? null, true);
+        $this->notifications_new_order = $this->castToBool($allSettings['notifications.new_order_enabled']
+            ?? $allSettings['notifications.new_order']  // Legacy support
+            ?? null, true);
     }
 
     protected function getSetting(string $key, $default = null)
     {
-        $settings = Cache::remember('system_settings_all', 3600, function () {
-            return SystemSetting::pluck('value', 'key')->toArray();
-        });
-
-        return $settings[$key] ?? $default;
+        return $this->settings->get($key, $default);
     }
 
-    protected function setSetting(string $key, $value, string $group = 'general'): void
+    protected function setSetting(string $key, $value, string $group = 'general', string $type = 'string'): void
     {
-        SystemSetting::updateOrCreate(
-            ['key' => $key],
-            [
-                'value' => $value,
-                'group' => $group,
-                'is_public' => false,
-            ]
-        );
+        $this->settings->set($key, $value, [
+            'group' => $group,
+            'type' => $type,
+            'is_public' => false,
+        ]);
+    }
+
+    /**
+     * Clear all settings caches for consistency
+     */
+    protected function clearSettingsCaches(): void
+    {
+        Cache::forget('system_settings');
+        Cache::forget('system_settings_all');
+        $this->settings->clearCache();
     }
 
     public function switchTab(string $tab): void
@@ -348,15 +404,15 @@ class UnifiedSettings extends Component
             'default_currency' => 'required|string|size:3',
         ]);
 
-        $this->setSetting('company.name', $this->company_name, 'general');
-        $this->setSetting('company.email', $this->company_email, 'general');
-        $this->setSetting('company.phone', $this->company_phone, 'general');
-        $this->setSetting('app.timezone', $this->timezone, 'general');
-        $this->setSetting('app.date_format', $this->date_format, 'general');
+        // Use canonical key names from config/settings.php
+        $this->setSetting('general.company_name', $this->company_name, 'general');
+        $this->setSetting('general.company_email', $this->company_email, 'general');
+        $this->setSetting('general.company_phone', $this->company_phone, 'general');
+        $this->setSetting('branding.timezone', $this->timezone, 'branding');
+        $this->setSetting('branding.date_format', $this->date_format, 'branding');
         $this->setSetting('general.default_currency', $this->default_currency, 'general');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('General settings saved successfully'));
 
         return $this->redirectToTab('general');
@@ -418,8 +474,7 @@ class UnifiedSettings extends Component
         $this->setSetting('branding.secondary_color', $this->branding_secondary_color, 'branding');
         $this->setSetting('branding.tagline', $this->branding_tagline, 'branding');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Branding settings saved successfully'));
 
         return $this->redirectToTab('branding');
@@ -427,11 +482,10 @@ class UnifiedSettings extends Component
 
     public function saveBranch(): mixed
     {
-        $this->setSetting('system.multi_branch', $this->multi_branch, 'branch');
-        $this->setSetting('system.require_branch_selection', $this->require_branch_selection, 'branch');
+        $this->setSetting('system.multi_branch', $this->multi_branch, 'branch', 'boolean');
+        $this->setSetting('system.require_branch_selection', $this->require_branch_selection, 'branch', 'boolean');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Branch settings saved successfully'));
 
         return $this->redirectToTab('branch');
@@ -445,12 +499,11 @@ class UnifiedSettings extends Component
 
         // Normalize to the current key and remove the legacy one to avoid drift
         SystemSetting::where('key', 'security.require_2fa')->delete();
-        $this->setSetting('security.2fa_required', $this->require_2fa, 'security');
-        $this->setSetting('security.session_timeout', $this->session_timeout, 'security');
-        $this->setSetting('security.enable_audit_log', $this->enable_audit_log, 'security');
+        $this->setSetting('security.2fa_required', $this->require_2fa, 'security', 'boolean');
+        $this->setSetting('security.session_timeout', $this->session_timeout, 'security', 'integer');
+        $this->setSetting('security.enable_audit_log', $this->enable_audit_log, 'security', 'boolean');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Security settings saved successfully'));
 
         return $this->redirectToTab('security');
@@ -462,12 +515,11 @@ class UnifiedSettings extends Component
             'cache_ttl' => 'required|integer|min:60|max:86400',
         ]);
 
-        $this->setSetting('advanced.enable_api', $this->enable_api, 'advanced');
-        $this->setSetting('advanced.enable_webhooks', $this->enable_webhooks, 'advanced');
-        $this->setSetting('advanced.cache_ttl', $this->cache_ttl, 'advanced');
+        $this->setSetting('advanced.enable_api', $this->enable_api, 'advanced', 'boolean');
+        $this->setSetting('advanced.enable_webhooks', $this->enable_webhooks, 'advanced', 'boolean');
+        $this->setSetting('advanced.cache_ttl', $this->cache_ttl, 'advanced', 'integer');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         Cache::forget('api_enabled_setting'); // Clear API enabled cache for middleware
         session()->flash('success', __('Advanced settings saved successfully'));
 
@@ -482,13 +534,12 @@ class UnifiedSettings extends Component
             'backup_storage' => 'required|in:local,s3,ftp',
         ]);
 
-        $this->setSetting('backup.auto_backup', $this->auto_backup, 'backup');
+        $this->setSetting('backup.auto_backup', $this->auto_backup, 'backup', 'boolean');
         $this->setSetting('backup.frequency', $this->backup_frequency, 'backup');
-        $this->setSetting('backup.retention_days', $this->backup_retention_days, 'backup');
+        $this->setSetting('backup.retention_days', $this->backup_retention_days, 'backup', 'integer');
         $this->setSetting('backup.storage', $this->backup_storage, 'backup');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Backup settings saved successfully'));
 
         return $this->redirectToTab('backup');
@@ -501,12 +552,12 @@ class UnifiedSettings extends Component
             'stock_alert_threshold' => 'required|integer|min:0',
         ]);
 
-        $this->setSetting('inventory.costing_method', $this->inventory_costing_method, 'inventory');
-        $this->setSetting('inventory.stock_alert_threshold', $this->stock_alert_threshold, 'inventory');
-        $this->setSetting('inventory.use_per_product_threshold', $this->use_per_product_threshold, 'inventory');
+        // Use canonical key inventory.default_costing_method as per config/settings.php
+        $this->setSetting('inventory.default_costing_method', $this->inventory_costing_method, 'inventory');
+        $this->setSetting('inventory.stock_alert_threshold', $this->stock_alert_threshold, 'inventory', 'integer');
+        $this->setSetting('inventory.use_per_product_threshold', $this->use_per_product_threshold, 'inventory', 'boolean');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Inventory settings saved successfully'));
 
         return $this->redirectToTab('inventory');
@@ -519,13 +570,15 @@ class UnifiedSettings extends Component
             'pos_rounding_rule' => 'required|in:none,0.05,0.10,0.25,0.50,1.00',
         ]);
 
-        $this->setSetting('pos.allow_negative_stock', $this->pos_allow_negative_stock, 'pos');
-        $this->setSetting('pos.max_discount_percent', $this->pos_max_discount_percent, 'pos');
-        $this->setSetting('pos.auto_print_receipt', $this->pos_auto_print_receipt, 'pos');
+        // Save to both pos.allow_negative_stock and inventory.allow_negative_stock
+        // to ensure consistency between POS UI setting and inventory services
+        $this->setSetting('pos.allow_negative_stock', $this->pos_allow_negative_stock, 'pos', 'boolean');
+        $this->setSetting('inventory.allow_negative_stock', $this->pos_allow_negative_stock, 'inventory', 'boolean');
+        $this->setSetting('pos.max_discount_percent', $this->pos_max_discount_percent, 'pos', 'integer');
+        $this->setSetting('pos.auto_print_receipt', $this->pos_auto_print_receipt, 'pos', 'boolean');
         $this->setSetting('pos.rounding_rule', $this->pos_rounding_rule, 'pos');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('POS settings saved successfully'));
 
         return $this->redirectToTab('pos');
@@ -537,10 +590,10 @@ class UnifiedSettings extends Component
             'accounting_coa_template' => 'required|in:standard,retail,service',
         ]);
 
-        $this->setSetting('accounting.coa_template', $this->accounting_coa_template, 'accounting');
+        // Use canonical key accounting.default_coa_template as per config/settings.php
+        $this->setSetting('accounting.default_coa_template', $this->accounting_coa_template, 'accounting');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Accounting settings saved successfully'));
 
         return $this->redirectToTab('accounting');
@@ -560,18 +613,17 @@ class UnifiedSettings extends Component
             'hrm_health_insurance_deduction' => 'required|numeric|min:0',
         ]);
 
-        $this->setSetting('hrm.working_days_per_week', $this->hrm_working_days_per_week, 'hrm');
-        $this->setSetting('hrm.working_hours_per_day', $this->hrm_working_hours_per_day, 'hrm');
-        $this->setSetting('hrm.late_arrival_threshold', $this->hrm_late_arrival_threshold, 'hrm');
+        $this->setSetting('hrm.working_days_per_week', $this->hrm_working_days_per_week, 'hrm', 'integer');
+        $this->setSetting('hrm.working_hours_per_day', $this->hrm_working_hours_per_day, 'hrm', 'number');
+        $this->setSetting('hrm.late_arrival_threshold', $this->hrm_late_arrival_threshold, 'hrm', 'integer');
         $this->setSetting('hrm.transport_allowance_type', $this->hrm_transport_allowance_type, 'hrm');
-        $this->setSetting('hrm.transport_allowance_value', $this->hrm_transport_allowance_value, 'hrm');
+        $this->setSetting('hrm.transport_allowance_value', $this->hrm_transport_allowance_value, 'hrm', 'number');
         $this->setSetting('hrm.housing_allowance_type', $this->hrm_housing_allowance_type, 'hrm');
-        $this->setSetting('hrm.housing_allowance_value', $this->hrm_housing_allowance_value, 'hrm');
-        $this->setSetting('hrm.meal_allowance', $this->hrm_meal_allowance, 'hrm');
-        $this->setSetting('hrm.health_insurance_deduction', $this->hrm_health_insurance_deduction, 'hrm');
+        $this->setSetting('hrm.housing_allowance_value', $this->hrm_housing_allowance_value, 'hrm', 'number');
+        $this->setSetting('hrm.meal_allowance', $this->hrm_meal_allowance, 'hrm', 'number');
+        $this->setSetting('hrm.health_insurance_deduction', $this->hrm_health_insurance_deduction, 'hrm', 'number');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('HRM settings saved successfully'));
 
         return $this->redirectToTab('hrm');
@@ -585,12 +637,11 @@ class UnifiedSettings extends Component
             'rental_penalty_value' => 'required|numeric|min:0',
         ]);
 
-        $this->setSetting('rental.grace_period_days', $this->rental_grace_period_days, 'rental');
+        $this->setSetting('rental.grace_period_days', $this->rental_grace_period_days, 'rental', 'integer');
         $this->setSetting('rental.penalty_type', $this->rental_penalty_type, 'rental');
-        $this->setSetting('rental.penalty_value', $this->rental_penalty_value, 'rental');
+        $this->setSetting('rental.penalty_value', $this->rental_penalty_value, 'rental', 'number');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Rental settings saved successfully'));
 
         return $this->redirectToTab('rental');
@@ -604,12 +655,12 @@ class UnifiedSettings extends Component
             'sales_invoice_starting_number' => 'required|integer|min:1',
         ]);
 
-        $this->setSetting('sales.payment_terms_days', $this->sales_payment_terms_days, 'sales');
+        // Use canonical key sales.default_payment_terms as per config/settings.php
+        $this->setSetting('sales.default_payment_terms', $this->sales_payment_terms_days, 'sales', 'integer');
         $this->setSetting('sales.invoice_prefix', $this->sales_invoice_prefix, 'sales');
-        $this->setSetting('sales.invoice_starting_number', $this->sales_invoice_starting_number, 'sales');
+        $this->setSetting('sales.invoice_starting_number', $this->sales_invoice_starting_number, 'sales', 'integer');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Sales settings saved successfully'));
 
         return $this->redirectToTab('sales');
@@ -617,12 +668,12 @@ class UnifiedSettings extends Component
 
     public function saveNotifications(): mixed
     {
-        $this->setSetting('notifications.low_stock', $this->notifications_low_stock, 'notifications');
-        $this->setSetting('notifications.payment_due', $this->notifications_payment_due, 'notifications');
-        $this->setSetting('notifications.new_order', $this->notifications_new_order, 'notifications');
+        // Use canonical key names with _enabled suffix as per config/settings.php
+        $this->setSetting('notifications.low_stock_enabled', $this->notifications_low_stock, 'notifications', 'boolean');
+        $this->setSetting('notifications.payment_due_enabled', $this->notifications_payment_due, 'notifications', 'boolean');
+        $this->setSetting('notifications.new_order_enabled', $this->notifications_new_order, 'notifications', 'boolean');
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         session()->flash('success', __('Notification settings saved successfully'));
 
         return $this->redirectToTab('notifications');
@@ -640,8 +691,7 @@ class UnifiedSettings extends Component
             SystemSetting::where('key', $fullKey)->delete();
         }
 
-        Cache::forget('system_settings');
-        Cache::forget('system_settings_all');
+        $this->clearSettingsCaches();
         $this->loadSettings();
 
         session()->flash('success', __('Settings restored to defaults for :group', ['group' => $group]));
@@ -651,6 +701,7 @@ class UnifiedSettings extends Component
 
     public function render()
     {
+        $this->settings = app(SettingsService::class);
         $currencies = \App\Models\Currency::active()->ordered()->get(['code', 'name', 'symbol']);
 
         return view('livewire.admin.settings.unified-settings', [

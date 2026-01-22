@@ -384,7 +384,8 @@ class OrdersController extends BaseApiController
         }
 
         // If no preferred ID, try default warehouse scoped to branch
-        $defaultWarehouseId = setting('default_warehouse_id');
+        // Use canonical key inventory.default_warehouse_id as defined in config/settings.php
+        $defaultWarehouseId = setting('inventory.default_warehouse_id');
         if ($defaultWarehouseId !== null && $branchId !== null) {
             $defaultWarehouse = Warehouse::where('id', $defaultWarehouseId)
                 ->where('branch_id', $branchId)

@@ -41,8 +41,9 @@ class CostingService
         float $quantity
     ): array {
         // Use product-specific method if set, otherwise use system default from settings
+        // Canonical key is inventory.default_costing_method as defined in config/settings.php
         $costMethod = $product->cost_method
-            ?? strtolower(setting('inventory.costing_method', 'weighted_average'));
+            ?? strtolower(setting('inventory.default_costing_method', 'weighted_average'));
 
         return match ($costMethod) {
             'fifo', 'FIFO' => $this->calculateFifoCost($product->id, $warehouseId, $quantity),
