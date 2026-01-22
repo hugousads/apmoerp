@@ -103,6 +103,29 @@ class Form extends Component
         }
     }
 
+    /**
+     * Auto-generate field_key from field_label when creating a new field
+     * This makes it easier for non-technical admins
+     */
+    public function updatedFieldLabel(): void
+    {
+        // Only auto-generate if not editing an existing field
+        if (! $this->fieldId && empty($this->field_key)) {
+            $this->field_key = $this->generateFieldKey($this->field_label);
+        }
+    }
+
+    protected function generateFieldKey(string $label): string
+    {
+        // Convert label to snake_case, lowercase, only letters and underscores
+        $key = strtolower(trim($label));
+        $key = preg_replace('/[^a-z0-9]+/', '_', $key);
+        $key = preg_replace('/_+/', '_', $key);
+        $key = trim($key, '_');
+        
+        return $key ?: 'custom_field';
+    }
+
     protected function loadField(): void
     {
         $field = ModuleProductField::where('module_id', $this->moduleId)->findOrFail($this->fieldId);

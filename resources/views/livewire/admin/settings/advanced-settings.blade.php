@@ -159,6 +159,7 @@
                                 <option value="{{ $key }}">{{ $provider['name'] }} - {{ $provider['description'] }}</option>
                             @endforeach
                         </select>
+                        <p class="text-xs text-slate-500 mt-1">{{ __('Choose which provider to use for sending SMS/WhatsApp messages') }}</p>
                     </div>
 
                     {{-- 3shm Settings --}}
@@ -170,14 +171,32 @@
                                 <span class="text-sm text-slate-600">{{ __('Enabled') }}</span>
                             </label>
                         </div>
+                        
+                        {{-- Help box for 3shm --}}
+                        <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div class="flex items-start gap-2">
+                                <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div class="text-xs text-blue-800">
+                                    <p class="font-medium">{{ __('How to get your 3shm keys:') }}</p>
+                                    <ol class="list-decimal list-inside mt-1 space-y-0.5">
+                                        <li>{{ __('Login to your 3shm dashboard') }}</li>
+                                        <li>{{ __('Go to Settings > API Keys') }}</li>
+                                        <li>{{ __('Copy App Key and Auth Key') }}</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('App Key') }}</label>
-                                <input type="password" wire:model="sms.3shm.appkey" class="erp-input w-full" placeholder="{{ __('Enter App Key') }}">
+                                <input type="password" wire:model="sms.3shm.appkey" class="erp-input w-full" placeholder="{{ __('Paste your App Key here') }}">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('Auth Key') }}</label>
-                                <input type="password" wire:model="sms.3shm.authkey" class="erp-input w-full" placeholder="{{ __('Enter Auth Key') }}">
+                                <input type="password" wire:model="sms.3shm.authkey" class="erp-input w-full" placeholder="{{ __('Paste your Auth Key here') }}">
                             </div>
                         </div>
                         <label class="flex items-center gap-2 mt-3 cursor-pointer">
@@ -196,6 +215,24 @@
                                 <span class="text-sm text-slate-600">{{ __('Enabled') }}</span>
                             </label>
                         </div>
+                        
+                        {{-- Help box for SMSMISR --}}
+                        <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div class="flex items-start gap-2">
+                                <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div class="text-xs text-blue-800">
+                                    <p class="font-medium">{{ __('How to get your SMSMISR credentials:') }}</p>
+                                    <ol class="list-decimal list-inside mt-1 space-y-0.5">
+                                        <li>{{ __('Login to smsmisr.com') }}</li>
+                                        <li>{{ __('Go to Account Settings') }}</li>
+                                        <li>{{ __('Find your username and create a password for API access') }}</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('Username') }}</label>
@@ -256,14 +293,34 @@
                                 <span class="text-sm text-slate-700">{{ __('Enable reCAPTCHA on login') }}</span>
                             </label>
                             @if ($security['recaptcha_enabled'])
+                                {{-- Help for reCAPTCHA --}}
+                                <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                    <div class="flex items-start gap-2">
+                                        <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <div class="text-xs text-blue-800">
+                                            <p class="font-medium">{{ __('How to get reCAPTCHA keys:') }}</p>
+                                            <ol class="list-decimal list-inside mt-1 space-y-0.5">
+                                                <li>{{ __('Go to') }} <a href="https://www.google.com/recaptcha/admin" target="_blank" class="underline">google.com/recaptcha/admin</a></li>
+                                                <li>{{ __('Click "+" to create new site') }}</li>
+                                                <li>{{ __('Choose reCAPTCHA v2 "I\'m not a robot"') }}</li>
+                                                <li>{{ __('Add your domain and submit') }}</li>
+                                                <li>{{ __('Copy Site Key and Secret Key') }}</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('Site Key') }}</label>
-                                        <input type="text" wire:model="security.recaptcha_site_key" class="erp-input w-full">
+                                        <input type="text" wire:model="security.recaptcha_site_key" class="erp-input w-full" placeholder="{{ __('Paste your Site Key here') }}">
+                                        <p class="text-xs text-slate-500 mt-1">{{ __('Used on the frontend') }}</p>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('Secret Key') }}</label>
-                                        <input type="password" wire:model="security.recaptcha_secret_key" class="erp-input w-full">
+                                        <input type="password" wire:model="security.recaptcha_secret_key" class="erp-input w-full" placeholder="{{ __('Paste your Secret Key here') }}">
+                                        <p class="text-xs text-slate-500 mt-1">{{ __('Keep this private - used on server side') }}</p>
                                     </div>
                                 </div>
                             @endif
@@ -360,14 +417,22 @@
                     <h2 class="text-lg font-semibold text-slate-800 mb-6">{{ __('Firebase Push Notifications') }}</h2>
                     
                     <div class="space-y-6">
-                        <div class="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                        {{-- Step-by-step guide --}}
+                        <div class="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
                             <div class="flex items-start gap-3">
-                                <svg class="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <svg class="w-6 h-6 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <div class="text-sm text-amber-800">
-                                    <p class="font-medium mb-1">{{ __('Firebase Configuration') }}</p>
-                                    <p>{{ __('Get your Firebase configuration from the Firebase Console > Project Settings > General > Your apps > Web app.') }}</p>
+                                <div class="text-sm text-amber-900">
+                                    <p class="font-semibold mb-2">{{ __('How to set up Firebase (Step by Step):') }}</p>
+                                    <ol class="list-decimal list-inside space-y-1 text-amber-800">
+                                        <li>{{ __('Go to') }} <a href="https://console.firebase.google.com" target="_blank" class="underline font-medium">console.firebase.google.com</a></li>
+                                        <li>{{ __('Create a new project or select existing one') }}</li>
+                                        <li>{{ __('Click on Project Settings (gear icon)') }}</li>
+                                        <li>{{ __('Scroll down to "Your apps" and click "Add app" > Web (</> icon)') }}</li>
+                                        <li>{{ __('Copy the configuration values below') }}</li>
+                                        <li>{{ __('For VAPID key: Go to Cloud Messaging tab > Web Push certificates') }}</li>
+                                    </ol>
                                 </div>
                             </div>
                         </div>
@@ -381,32 +446,35 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('API Key') }} *</label>
-                                    <input type="password" wire:model="firebase.api_key" class="erp-input w-full" placeholder="AIzaSy...">
+                                    <input type="password" wire:model="firebase.api_key" class="erp-input w-full" placeholder="{{ __('Starts with AIzaSy...') }}">
+                                    <p class="text-xs text-slate-500 mt-1">{{ __('Found in Project Settings > General') }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('Project ID') }} *</label>
-                                    <input type="text" wire:model="firebase.project_id" class="erp-input w-full" placeholder="my-project-id">
+                                    <input type="text" wire:model="firebase.project_id" class="erp-input w-full" placeholder="{{ __('e.g. my-app-12345') }}">
+                                    <p class="text-xs text-slate-500 mt-1">{{ __('Your Firebase project identifier') }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('Auth Domain') }}</label>
-                                    <input type="text" wire:model="firebase.auth_domain" class="erp-input w-full" placeholder="my-project.firebaseapp.com">
+                                    <input type="text" wire:model="firebase.auth_domain" class="erp-input w-full" placeholder="{{ __('e.g. my-app.firebaseapp.com') }}">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('Storage Bucket') }}</label>
-                                    <input type="text" wire:model="firebase.storage_bucket" class="erp-input w-full" placeholder="my-project.appspot.com">
+                                    <input type="text" wire:model="firebase.storage_bucket" class="erp-input w-full" placeholder="{{ __('e.g. my-app.appspot.com') }}">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('Messaging Sender ID') }}</label>
-                                    <input type="text" wire:model="firebase.messaging_sender_id" class="erp-input w-full" placeholder="123456789012">
+                                    <input type="text" wire:model="firebase.messaging_sender_id" class="erp-input w-full" placeholder="{{ __('e.g. 123456789012') }}">
+                                    <p class="text-xs text-slate-500 mt-1">{{ __('A 12-digit number') }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('App ID') }}</label>
-                                    <input type="text" wire:model="firebase.app_id" class="erp-input w-full" placeholder="1:123456789012:web:abc...">
+                                    <input type="text" wire:model="firebase.app_id" class="erp-input w-full" placeholder="{{ __('e.g. 1:123...:web:abc...') }}">
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-slate-700 mb-1">{{ __('VAPID Key (for Web Push)') }}</label>
-                                    <input type="password" wire:model="firebase.vapid_key" class="erp-input w-full" placeholder="BNx...">
-                                    <p class="text-xs text-slate-500 mt-1">{{ __('Found in Firebase Console > Cloud Messaging > Web Configuration') }}</p>
+                                    <input type="password" wire:model="firebase.vapid_key" class="erp-input w-full" placeholder="{{ __('Long key starting with B...') }}">
+                                    <p class="text-xs text-slate-500 mt-1">{{ __('Project Settings > Cloud Messaging > Web Push certificates > Key pair') }}</p>
                                 </div>
                             </div>
                         @endif

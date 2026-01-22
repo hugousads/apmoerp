@@ -77,30 +77,53 @@
         </div>
 
         <div class="erp-card p-6 space-y-4">
-            <h3 class="text-base font-medium text-slate-800 dark:text-slate-200 border-b pb-2">{{ __('API Credentials') }}</h3>
+            <div class="flex items-start justify-between">
+                <div>
+                    <h3 class="text-base font-medium text-slate-800 dark:text-slate-200 border-b pb-2">{{ __('API Credentials') }}</h3>
+                </div>
+            </div>
+            
+            {{-- Help text for API credentials --}}
+            <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-700">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="text-sm text-blue-800 dark:text-blue-200">
+                        <p class="font-medium mb-1">{{ __('Where to find these credentials?') }}</p>
+                        <ul class="list-disc list-inside text-xs space-y-1 text-blue-700 dark:text-blue-300">
+                            <li><strong>Shopify:</strong> {{ __('Admin > Settings > Apps > Develop apps > Create app') }}</li>
+                            <li><strong>WooCommerce:</strong> {{ __('WordPress Admin > WooCommerce > Settings > Advanced > REST API') }}</li>
+                            <li><strong>Salla:</strong> {{ __('Dashboard > Developer > Apps > Create new app') }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ __('API Key') }}</label>
-                    <input type="text" wire:model="api_key" class="erp-input w-full">
+                    <input type="text" wire:model="api_key" class="erp-input w-full" placeholder="{{ __('Paste your API key here') }}">
                     @error('api_key') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ __('API Secret') }}</label>
-                    <input type="password" wire:model="api_secret" class="erp-input w-full">
+                    <input type="password" wire:model="api_secret" class="erp-input w-full" placeholder="{{ __('Paste your API secret here') }}">
                     @error('api_secret') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ __('Access Token') }}</label>
-                <input type="password" wire:model="access_token" class="erp-input w-full">
+                <input type="password" wire:model="access_token" class="erp-input w-full" placeholder="{{ __('Paste your access token here') }}">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ __('Some platforms provide a single access token instead of key/secret pair') }}</p>
                 @error('access_token') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ __('Webhook Secret') }}</label>
-                <input type="text" wire:model="webhook_secret" class="erp-input w-full">
+                <input type="text" wire:model="webhook_secret" class="erp-input w-full" placeholder="{{ __('Optional - for webhook verification') }}">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ __('Used to verify incoming webhook requests from the store') }}</p>
                 @error('webhook_secret') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
             </div>
         </div>
