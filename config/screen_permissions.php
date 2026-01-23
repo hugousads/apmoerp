@@ -38,11 +38,6 @@ return [
         ],
     ],
 
-    // POS
-    'pos' => [
-        'terminal' => 'pos.use',
-    ],
-
     // Notifications
     'notifications' => [
         'center' => 'system.view-notifications',
