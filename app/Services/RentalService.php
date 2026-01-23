@@ -303,12 +303,17 @@ class RentalService implements RentalServiceInterface
         $skipped = [];
         $errors = [];
 
+        // FIX N+1 query: Pre-load existing invoices for this period in a single query
+        $contractIds = $contracts->pluck('id');
+        $existingInvoices = RentalInvoice::whereIn('contract_id', $contractIds)
+            ->where('period', $period)
+            ->get()
+            ->keyBy('contract_id');
+
         foreach ($contracts as $contract) {
             try {
                 // Check if invoice already exists for this period
-                $existingInvoice = RentalInvoice::where('contract_id', $contract->id)
-                    ->where('period', $period)
-                    ->first();
+                $existingInvoice = $existingInvoices->get($contract->id);
 
                 if ($existingInvoice) {
                     $skipped[] = [
