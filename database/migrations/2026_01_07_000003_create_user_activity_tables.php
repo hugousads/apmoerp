@@ -65,14 +65,19 @@ return new class extends Migration
             $table->text('user_agent')->nullable();
             $table->string('device_type', 30)->nullable();
             $table->string('browser', 50)->nullable();
+            $table->string('platform', 50)->nullable();
             $table->string('os', 50)->nullable();
+            $table->string('location', 191)->nullable();
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_current')->default(false);
             $table->timestamp('last_activity_at')->nullable();
+            $table->timestamp('last_activity')->nullable();
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();
 
             $table->index('user_id', 'idx_usrses_user_id');
             $table->index('is_active', 'idx_usrses_is_active');
+            $table->index('is_current', 'idx_usrses_is_current');
         });
 
         // Login activities
@@ -84,20 +89,24 @@ return new class extends Migration
                 ->cascadeOnDelete()
                 ->name('fk_logact_user__usr');
             $table->string('email', 191)->nullable();
+            $table->string('event', 50)->nullable(); // login, logout, failed
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->string('device_type', 30)->nullable();
             $table->string('browser', 50)->nullable();
+            $table->string('platform', 50)->nullable();
             $table->string('os', 50)->nullable();
             $table->string('status', 30); // success, failed, blocked, 2fa_required
             $table->string('failure_reason', 100)->nullable();
             $table->string('location', 191)->nullable();
+            $table->json('metadata')->nullable();
             $table->timestamps();
 
             $table->index('user_id', 'idx_logact_user_id');
             $table->index('email', 'idx_logact_email');
             $table->index('ip_address', 'idx_logact_ip');
             $table->index('status', 'idx_logact_status');
+            $table->index('event', 'idx_logact_event');
             $table->index('created_at', 'idx_logact_created');
         });
 
@@ -138,7 +147,10 @@ return new class extends Migration
             $table->index(['searchable_type', 'searchable_id'], 'idx_srchidx_searchable');
             $table->index('category', 'idx_srchidx_category');
             $table->index('branch_id', 'idx_srchidx_branch_id');
-            $table->fullText(['title', 'content'], 'ft_srchidx_content');
+            // Full-text index only supported on MySQL/PostgreSQL
+            if (config('database.default') !== 'sqlite') {
+                $table->fullText(['title', 'content'], 'ft_srchidx_content');
+            }
         });
 
         // Notifications
@@ -162,12 +174,16 @@ return new class extends Migration
             $table->text('value')->nullable();
             $table->string('type', 30)->default('string');
             $table->string('setting_group', 50)->nullable();
+            $table->string('category', 50)->nullable();
+            $table->text('description')->nullable();
+            $table->unsignedSmallInteger('sort_order')->default(0);
             $table->json('options')->nullable();
             $table->boolean('is_public')->default(false);
             $table->boolean('is_encrypted')->default(false);
             $table->timestamps();
 
             $table->index('setting_group', 'idx_sysset_group');
+            $table->index('category', 'idx_sysset_category');
         });
 
         // Audit logs

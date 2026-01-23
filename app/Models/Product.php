@@ -130,8 +130,6 @@ class Product extends BaseModel
         'variation_attributes' => 'array',
         'custom_fields' => 'array',
         'gallery' => 'array',
-        // V24-MED-03 FIX: Add images cast so ProductObserver can properly delete images
-        'images' => 'array',
     ];
 
     protected static function booted(): void

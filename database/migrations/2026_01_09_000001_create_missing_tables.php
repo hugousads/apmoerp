@@ -223,7 +223,11 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->text('terms_conditions')->nullable();
             $table->boolean('is_converted')->default(false);
-            $table->unsignedBigInteger('converted_to_sale_id')->nullable();
+            $table->foreignId('converted_to_sale_id')
+                ->nullable()
+                ->constrained('sales')
+                ->nullOnDelete()
+                ->name('fk_quote_converted_to_sale__sale');
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')
@@ -243,6 +247,7 @@ return new class extends Migration
             $table->index('customer_id', 'idx_quote_customer_id');
             $table->index('status', 'idx_quote_status');
             $table->index('quote_date', 'idx_quote_date');
+            $table->index('converted_to_sale_id', 'idx_quote_converted_to_sale_id');
         });
 
         // Quote Items
@@ -269,14 +274,6 @@ return new class extends Migration
 
             $table->index('quote_id', 'idx_quotei_quote_id');
             $table->index('product_id', 'idx_quotei_product_id');
-        });
-
-        // Add FK from quotes to sales for conversion tracking
-        Schema::table('quotes', function (Blueprint $table) {
-            $table->foreign('converted_to_sale_id', 'fk_quote_converted__sale')
-                ->references('id')
-                ->on('sales')
-                ->nullOnDelete();
         });
 
         // Update purchase_requisitions to have proper FK for departments and cost_centers

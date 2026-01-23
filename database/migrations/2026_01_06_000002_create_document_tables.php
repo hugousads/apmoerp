@@ -48,6 +48,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('version')->default(1);
             $table->unsignedSmallInteger('version_number')->default(1);
             $table->boolean('is_public')->default(false);
+            $table->string('access_level', 30)->default('private'); // private, public
             $table->json('metadata')->nullable();
             $table->foreignId('uploaded_by')
                 ->nullable()
@@ -157,7 +158,6 @@ return new class extends Migration
             $table->json('metadata')->nullable();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
-            $table->timestamp('created_at')->nullable();
             $table->timestamps();
 
             $table->index('document_id', 'idx_docact_document_id');

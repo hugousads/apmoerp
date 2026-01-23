@@ -34,15 +34,15 @@ class Form extends Component
 
     public string $notes = '';
 
-    public float $discount_percentage = 0;
+    public float $discount_percent = 0;
 
     public string $payment_terms = '';
 
-    public int $payment_due_days = 0;
+    public int $payment_terms_days = 0;
 
-    public string $preferred_currency = '';
+    public string $currency = '';
 
-    public string $billing_address = '';
+    public string $address = '';
 
     public string $shipping_address = '';
 
@@ -58,11 +58,11 @@ class Form extends Component
             'phone' => 'nullable|string|max:50',
             'tax_number' => 'nullable|string|max:50',
             'credit_limit' => 'nullable|numeric|min:0',
-            'discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
             'payment_terms' => 'nullable|in:immediate,net15,net30,net60,net90',
-            'payment_due_days' => 'nullable|integer|min:0',
-            'preferred_currency' => 'nullable|string|size:3',
-            'billing_address' => $this->unicodeText(required: false, max: 500),
+            'payment_terms_days' => 'nullable|integer|min:0',
+            'currency' => 'nullable|string|size:3',
+            'address' => $this->unicodeText(required: false, max: 500),
             'shipping_address' => $this->unicodeText(required: false, max: 500),
             'status' => 'required|in:active,inactive',
             'notes' => $this->unicodeText(required: false),
@@ -87,11 +87,11 @@ class Form extends Component
             $this->phone = $customer->phone ?? '';
             $this->tax_number = $customer->tax_number ?? '';
             $this->credit_limit = decimal_float($customer->credit_limit ?? 0);
-            $this->discount_percentage = decimal_float($customer->discount_percentage ?? 0);
+            $this->discount_percent = decimal_float($customer->discount_percent ?? 0);
             $this->payment_terms = $customer->payment_terms ?? '';
-            $this->payment_due_days = (int) ($customer->payment_due_days ?? 0);
-            $this->preferred_currency = $customer->preferred_currency ?? '';
-            $this->billing_address = $customer->billing_address ?? '';
+            $this->payment_terms_days = (int) ($customer->payment_terms_days ?? 0);
+            $this->currency = $customer->currency ?? '';
+            $this->address = $customer->address ?? '';
             $this->shipping_address = $customer->shipping_address ?? '';
             $this->status = $customer->status ?? 'active';
             $this->notes = $customer->notes ?? '';
