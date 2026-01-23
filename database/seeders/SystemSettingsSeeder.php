@@ -324,6 +324,29 @@ class SystemSettingsSeeder extends Seeder
                 'setting_group' => 'security',
                 'is_public' => false,
             ],
+
+            // Advanced Settings
+            [
+                'setting_key' => 'advanced.cache_ttl',
+                'value' => '300',
+                'type' => 'integer',
+                'setting_group' => 'advanced',
+                'is_public' => false,
+            ],
+            [
+                'setting_key' => 'advanced.debug_mode',
+                'value' => 'false',
+                'type' => 'boolean',
+                'setting_group' => 'advanced',
+                'is_public' => false,
+            ],
+            [
+                'setting_key' => 'advanced.api_rate_limit',
+                'value' => '60',
+                'type' => 'integer',
+                'setting_group' => 'advanced',
+                'is_public' => false,
+            ],
         ];
 
         foreach ($settings as $setting) {

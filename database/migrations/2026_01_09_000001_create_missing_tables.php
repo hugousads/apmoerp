@@ -304,7 +304,7 @@ return new class extends Migration
         });
 
         Schema::table('quotes', function (Blueprint $table) {
-            $table->dropForeign('fk_quote_converted__sale');
+            $table->dropForeign('fk_quote_converted_to_sale__sale');
         });
 
         Schema::dropIfExists('quote_items');
