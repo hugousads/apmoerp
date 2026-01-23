@@ -70,21 +70,34 @@ class Form extends Component
         $validated = $this->validate();
 
         $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        // Ensure branch context is available
+        if (!$branchId) {
+            session()->flash('error', __('Unable to determine branch for this operation'));
+            return null;
+        }
+        
         $data = array_merge($validated, [
-            'branch_id' => $user->branch_id ?? 1,
+            'branch_id' => $branchId,
         ]);
 
         if ($this->tenantId) {
-            Tenant::findOrFail($this->tenantId)->update($data);
+            // Verify cross-branch access
+            $tenant = Tenant::findOrFail($this->tenantId);
+            if ($tenant->branch_id && $tenant->branch_id !== $branchId) {
+                abort(403, __('Cannot update tenant from another branch'));
+            }
+            $tenant->update($data);
             session()->flash('success', __('Tenant updated successfully'));
         } else {
             Tenant::create($data);
             session()->flash('success', __('Tenant created successfully'));
         }
 
-        Cache::forget('tenants_stats_'.($user->branch_id ?? 'all'));
+        Cache::forget('tenants_stats_'.$branchId);
 
-        $this->redirectRoute('app.rental.tenants.index', navigate: true);
+        return $this->redirectRoute('app.rental.tenants.index', navigate: true);
     }
 
     #[Layout('layouts.app')]

@@ -61,7 +61,14 @@ class Form extends Component
         }
 
         $this->employeeId = $employee;
-        $this->form['branch_id'] = (int) ($user->branch_id ?? 1);
+        
+        $branchId = $user->branch_id;
+        // Ensure branch context is available
+        if (!$branchId) {
+            abort(403, __('Unable to determine branch for this operation'));
+        }
+        
+        $this->form['branch_id'] = (int) $branchId;
         $this->form['is_active'] = true;
         $this->form['salary'] = 0.0;
 

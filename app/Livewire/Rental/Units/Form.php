@@ -63,7 +63,12 @@ class Form extends Component
 
         $this->unitId = $unit;
 
-        $branchId = (int) ($user->branch_id ?? 1);
+        $branchId = $user->branch_id;
+        
+        // Ensure branch context is available
+        if (!$branchId) {
+            abort(403, __('Unable to determine branch for this operation'));
+        }
 
         // Load properties for this branch
         $this->availableProperties = Property::query()

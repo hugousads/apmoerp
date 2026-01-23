@@ -64,18 +64,31 @@ class Form extends Component
         $validated = $this->validate();
 
         $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        // Ensure branch context is available
+        if (!$branchId) {
+            session()->flash('error', __('Unable to determine branch for this operation'));
+            return null;
+        }
+        
         $data = array_merge($validated, [
-            'branch_id' => $user->branch_id ?? 1,
+            'branch_id' => $branchId,
         ]);
 
         return $this->handleOperation(
-            operation: function () use ($data, $user) {
+            operation: function () use ($data, $branchId) {
                 if ($this->propertyId) {
-                    Property::findOrFail($this->propertyId)->update($data);
+                    // Verify cross-branch access
+                    $property = Property::findOrFail($this->propertyId);
+                    if ($property->branch_id && $property->branch_id !== $branchId) {
+                        abort(403, __('Cannot update property from another branch'));
+                    }
+                    $property->update($data);
                 } else {
                     Property::create($data);
                 }
-                Cache::forget('properties_stats_'.($user->branch_id ?? 'all'));
+                Cache::forget('properties_stats_'.$branchId);
             },
             successMessage: $this->propertyId
                 ? __('Property updated successfully')
