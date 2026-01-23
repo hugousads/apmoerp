@@ -300,17 +300,38 @@ return new class extends Migration
                 ->cascadeOnDelete()
                 ->name('fk_rtnrfnd_branch__brnch');
             $table->string('refund_number', 50);
-            $table->string('refundable_type', 100);
-            $table->unsignedBigInteger('refundable_id');
+            // V9-CRITICAL-02 FIX: Support both SalesReturn and ReturnNote refunds
+            $table->foreignId('sales_return_id')
+                ->nullable()
+                ->constrained('sales_returns')
+                ->cascadeOnDelete()
+                ->name('fk_rtnrfnd_sales_return__salret');
+            $table->foreignId('return_note_id')
+                ->nullable()
+                ->constrained('return_notes')
+                ->cascadeOnDelete()
+                ->name('fk_rtnrfnd_return_note__retnote');
+            $table->foreignId('credit_note_id')
+                ->nullable()
+                ->constrained('credit_notes')
+                ->nullOnDelete()
+                ->name('fk_rtnrfnd_credit_note__crednote');
             $table->foreignId('customer_id')
                 ->nullable()
                 ->constrained('customers')
                 ->nullOnDelete()
                 ->name('fk_rtnrfnd_customer__cust');
             $table->decimal('amount', 18, 2);
+            $table->string('currency', 10)->default('USD');
             $table->string('method', 50); // cash, card, bank_transfer, credit_note
+            $table->string('refund_method', 50)->nullable(); // Alias for method
+            $table->string('reference_number', 100)->nullable();
+            $table->string('transaction_id', 191)->nullable();
             $table->string('status', 30)->default('pending');
             $table->text('notes')->nullable();
+            $table->string('bank_name', 191)->nullable();
+            $table->string('account_number', 50)->nullable();
+            $table->string('card_last_four', 4)->nullable();
             $table->foreignId('processed_by')
                 ->nullable()
                 ->constrained('users')
@@ -326,7 +347,9 @@ return new class extends Migration
 
             $table->unique(['branch_id', 'refund_number'], 'uq_rtnrfnd_branch_number');
             $table->index('branch_id', 'idx_rtnrfnd_branch_id');
-            $table->index(['refundable_type', 'refundable_id'], 'idx_rtnrfnd_refundable');
+            $table->index('sales_return_id', 'idx_rtnrfnd_sales_return_id');
+            $table->index('return_note_id', 'idx_rtnrfnd_return_note_id');
+            $table->index('credit_note_id', 'idx_rtnrfnd_credit_note_id');
             $table->index('status', 'idx_rtnrfnd_status');
         });
 

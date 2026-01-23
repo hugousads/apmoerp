@@ -109,7 +109,7 @@ return new class extends Migration
                 ->constrained('store_orders')
                 ->nullOnDelete()
                 ->name('fk_sale_store_order__stord');
-            $table->unsignedBigInteger('quotation_id')->nullable();
+            $table->unsignedBigInteger('quotation_id')->nullable(); // External quote reference (not FK)
             $table->foreignId('salesperson_id')
                 ->nullable()
                 ->constrained('users')
@@ -151,6 +151,8 @@ return new class extends Migration
             $table->index('type', 'idx_sale_type');
             $table->index('is_pos_sale', 'idx_sale_is_pos');
             $table->index('created_by', 'idx_sale_created_by');
+            $table->index('salesperson_id', 'idx_sale_salesperson_id');
+            $table->index('quotation_id', 'idx_sale_quotation_id');
             $table->index(['branch_id', 'id'], 'idx_sale_branch_id_id');
         });
 
@@ -197,7 +199,11 @@ return new class extends Migration
             $table->decimal('tax_percent', 5, 2)->default(0);
             $table->decimal('tax_amount', 18, 4)->default(0);
             $table->decimal('line_total', 18, 4);
-            $table->unsignedBigInteger('batch_id')->nullable();
+            $table->foreignId('batch_id')
+                ->nullable()
+                ->constrained('inventory_batches')
+                ->nullOnDelete()
+                ->name('fk_salei_batch__invbatch');
             $table->json('serial_numbers')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
@@ -206,6 +212,7 @@ return new class extends Migration
             $table->index('sale_id', 'idx_salei_sale_id');
             $table->index('branch_id', 'idx_salei_branch_id');
             $table->index('product_id', 'idx_salei_product_id');
+            $table->index('batch_id', 'idx_salei_batch_id');
         });
 
         // Sale payments

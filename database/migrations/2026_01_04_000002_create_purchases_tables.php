@@ -45,7 +45,11 @@ return new class extends Migration
             $table->timestamp('approved_at')->nullable();
             $table->text('rejection_reason')->nullable();
             $table->boolean('is_converted')->default(false);
-            $table->unsignedBigInteger('converted_to_po_id')->nullable();
+            $table->foreignId('converted_to_po_id')
+                ->nullable()
+                ->constrained('purchases')
+                ->nullOnDelete()
+                ->name('fk_prreq_converted_to_po__purch');
             $table->json('extra_attributes')->nullable();
             $table->foreignId('created_by')
                 ->nullable()
@@ -65,6 +69,7 @@ return new class extends Migration
             $table->index('status', 'idx_prreq_status');
             $table->index('required_date', 'idx_prreq_required_date');
             $table->index('priority', 'idx_prreq_priority');
+            $table->index('converted_to_po_id', 'idx_prreq_converted_to_po_id');
         });
 
         // Purchase requisition items
