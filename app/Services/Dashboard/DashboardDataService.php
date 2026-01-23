@@ -123,8 +123,7 @@ class DashboardDataService
     public function generateTotalProductsData(?int $branchId): array
     {
         $query = DB::table('products')
-            ->whereNull('deleted_at')
-            ->where('status', 'active');
+            ->whereNull('deleted_at');
 
         if ($branchId) {
             $query->where('branch_id', $branchId);
