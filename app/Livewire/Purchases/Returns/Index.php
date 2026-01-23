@@ -161,8 +161,9 @@ class Index extends Component
                     $qty = min(decimal_float($it['qty'], 4), decimal_float($pi->qty, 4));
                     // V23-CRIT-01 FIX: Use unit_cost accessor (maps to unit_price) instead of non-existent cost
                     $unitCost = decimal_float($pi->unit_cost, 4);
-                    $line = $qty * $unitCost;
-                    $refund += $line;
+                    // FIX: Use bcmul for financial precision
+                    $line = decimal_float(bcmul((string) $qty, (string) $unitCost, 4), 4);
+                    $refund = decimal_float(bcadd((string) $refund, (string) $line, 4), 4);
 
                     // V25-CRIT-02 FIX: Track processed items for stock movements
                     $processedItems[] = [

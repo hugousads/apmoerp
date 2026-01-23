@@ -84,13 +84,18 @@ class CustomerPortalController extends Controller
             return redirect()->route('portal.login');
         }
 
+        // FIX: Filter out non-revenue statuses from recent orders display
         $recentOrders = Sale::where('customer_id', $customer->id)
-            ->orderByDesc('created_at')
+            ->whereNotIn('status', SaleStatus::nonRevenueStatuses())
+            ->orderByDesc('sale_date')
             ->limit(5)
             ->get();
 
         $stats = [
-            'total_orders' => Sale::where('customer_id', $customer->id)->count(),
+            // FIX: Exclude non-revenue statuses from total_orders count
+            'total_orders' => Sale::where('customer_id', $customer->id)
+                ->whereNotIn('status', SaleStatus::nonRevenueStatuses())
+                ->count(),
             // V35-MED-06 FIX: Exclude all non-revenue statuses
             'total_spent' => Sale::where('customer_id', $customer->id)
                 ->whereNotIn('status', SaleStatus::nonRevenueStatuses())

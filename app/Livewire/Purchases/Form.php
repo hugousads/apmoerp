@@ -37,10 +37,6 @@ class Form extends Component
 
     public string $notes = '';
 
-    public string $supplier_notes = '';
-
-    public string $internal_notes = '';
-
     public string $expected_date = '';
 
     public string $shipping_method = '';
@@ -115,8 +111,6 @@ class Form extends Component
             'status' => 'required|in:draft,pending,posted,received,cancelled',
             'currency' => 'nullable|string|max:3',
             'notes' => 'nullable|string',
-            'supplier_notes' => 'nullable|string|max:1000',
-            'internal_notes' => 'nullable|string|max:1000',
             'expected_date' => 'nullable|date',
             'shipping_method' => 'nullable|string|max:191',
             'discount_total' => 'nullable|numeric|min:0',
@@ -152,16 +146,14 @@ class Form extends Component
             $this->editMode = true;
             $this->supplier_id = (string) ($purchase->supplier_id ?? '');
             $this->warehouse_id = (string) ($purchase->warehouse_id ?? '');
-            $this->reference_no = $purchase->reference_no ?? '';
+            $this->reference_no = $purchase->reference_number ?? '';
             $this->status = $purchase->status ?? 'draft';
             $this->currency = $purchase->currency ?? 'EGP';
             $this->notes = $purchase->notes ?? '';
-            $this->supplier_notes = $purchase->supplier_notes ?? '';
-            $this->internal_notes = $purchase->internal_notes ?? '';
             $this->expected_date = $purchase->expected_date?->format('Y-m-d') ?? '';
             $this->shipping_method = $purchase->shipping_method ?? '';
-            $this->discount_total = decimal_float($purchase->discount_total ?? 0);
-            $this->shipping_total = decimal_float($purchase->shipping_total ?? 0);
+            $this->discount_total = decimal_float($purchase->discount_amount ?? 0);
+            $this->shipping_total = decimal_float($purchase->shipping_amount ?? 0);
 
             $this->items = $purchase->items->map(fn ($item) => [
                 'id' => $item->id,

@@ -61,7 +61,14 @@ class Form extends Component
         }
 
         $this->employeeId = $employee;
-        $this->form['branch_id'] = (int) ($user->branch_id ?? 1);
+        
+        $branchId = $user->branch_id;
+        // Ensure branch context is available
+        if (!$branchId) {
+            abort(403, __('Unable to determine branch for this operation'));
+        }
+        
+        $this->form['branch_id'] = (int) $branchId;
         $this->form['is_active'] = true;
         $this->form['salary'] = 0.0;
 
@@ -99,7 +106,8 @@ class Form extends Component
 
             // V23-MED-02 FIX: Recompute schema/users for the employee's branch
             // when editing an employee from another branch
-            if ($employeeModel->branch_id && $employeeModel->branch_id !== ($user->branch_id ?? 1)) {
+            $userBranchId = $user->branch_id;
+            if ($employeeModel->branch_id && $userBranchId && $employeeModel->branch_id !== $userBranchId) {
                 $this->dynamicSchema = $moduleFields->formSchema('hr', 'employees', $employeeModel->branch_id);
                 $this->availableUsers = User::query()
                     ->where('branch_id', $employeeModel->branch_id)

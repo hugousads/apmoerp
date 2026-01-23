@@ -73,7 +73,8 @@ class Compare extends Component
                     'quantity' => $item->qty,
                     'unit_price' => $item->unit_cost,
                     'tax_percentage' => $item->tax_rate,
-                    'total' => $item->qty * $item->unit_cost * (1 + ($item->tax_rate / 100)),
+                    // FIX: Use bcmath for financial precision
+                    'total' => decimal_float(bcmul(bcmul((string) $item->qty, (string) $item->unit_cost, 4), bcadd('1', bcdiv((string) $item->tax_rate, '100', 6), 6), 4), 4),
                 ];
             }
         }
@@ -94,7 +95,8 @@ class Compare extends Component
         // Find quotation with lowest total price
         $bestQuotation = $this->quotations->sortBy(function ($quotation) {
             return $quotation->items->sum(function ($item) {
-                return $item->qty * $item->unit_cost * (1 + ($item->tax_rate / 100));
+                // FIX: Use bcmath for financial precision
+                return decimal_float(bcmul(bcmul((string) $item->qty, (string) $item->unit_cost, 4), bcadd('1', bcdiv((string) $item->tax_rate, '100', 6), 6), 4), 4);
             });
         })->first();
 

@@ -81,13 +81,26 @@ class Form extends Component
         $validated = $this->validate();
 
         $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        // Ensure branch context is available
+        if (!$branchId) {
+            session()->flash('error', __('Unable to determine branch for this operation'));
+            return null;
+        }
+        
         $data = array_merge($validated, [
-            'branch_id' => $user->branch_id ?? 1,
+            'branch_id' => $branchId,
             'updated_by' => $user->id,
         ]);
 
         if ($this->warehouseId) {
-            Warehouse::findOrFail($this->warehouseId)->update($data);
+            // Verify cross-branch access
+            $warehouse = Warehouse::findOrFail($this->warehouseId);
+            if ($warehouse->branch_id && $warehouse->branch_id !== $branchId) {
+                abort(403, __('Cannot update warehouse from another branch'));
+            }
+            $warehouse->update($data);
             session()->flash('success', __('Warehouse updated successfully'));
         } else {
             $data['created_by'] = $user->id;
@@ -95,9 +108,9 @@ class Form extends Component
             session()->flash('success', __('Warehouse created successfully'));
         }
 
-        Cache::forget('warehouses_stats_'.($user->branch_id ?? 'all'));
+        Cache::forget('warehouses_stats_'.$branchId);
 
-        $this->redirectRoute('app.warehouse.locations.index', navigate: true);
+        return $this->redirectRoute('app.warehouse.locations.index', navigate: true);
     }
 
     #[Layout('layouts.app')]
