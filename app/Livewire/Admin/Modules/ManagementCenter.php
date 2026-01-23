@@ -40,14 +40,14 @@ class ManagementCenter extends Component
     public function loadModules(): void
     {
         $this->modules = Module::query()
-            ->select(['id', 'key', 'name', 'name_ar', 'is_active', 'is_core', 'module_type', 'icon', 'description'])
+            ->select(['id', 'module_key', 'name', 'name_ar', 'is_active', 'is_core', 'module_type', 'icon', 'description'])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
             ->map(function ($module) {
                 return [
                     'id' => $module->id,
-                    'key' => $module->key,
+                    'module_key' => $module->module_key,
                     'name' => $module->localized_name,
                     'is_active' => $module->is_active,
                     'is_core' => $module->is_core,

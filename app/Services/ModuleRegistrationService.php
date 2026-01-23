@@ -296,7 +296,7 @@ class ModuleRegistrationService
             ->map(function ($module) {
                 return [
                     'id' => $module->id,
-                    'key' => $module->key,
+                    'module_key' => $module->module_key,
                     'name' => $module->localized_name,
                     'description' => $module->localized_description,
                     'icon' => $module->icon,
