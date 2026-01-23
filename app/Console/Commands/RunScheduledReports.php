@@ -12,6 +12,20 @@ use Illuminate\Support\Facades\Log;
 
 class RunScheduledReports extends Command
 {
+    /**
+     * APMOERP68-FIX: Map day_of_week number (0-6) to Carbon-compatible day name.
+     * Carbon's next() method requires string day names, not numbers.
+     */
+    protected const DAY_OF_WEEK_MAP = [
+        0 => 'Sunday',
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
+    ];
+
     protected $signature = 'reports:run-scheduled 
                             {--force : Run all active schedules regardless of next_run_at}
                             {--id= : Run a specific schedule by ID}';
@@ -120,25 +134,14 @@ class RunScheduledReports extends Command
         $hour = (int) $time[0];
         $minute = (int) ($time[1] ?? 0);
 
-        // APMOERP68-FIX: Map day_of_week number to Carbon day name for proper weekly scheduling
-        $dayMap = [
-            0 => 'Sunday',
-            1 => 'Monday',
-            2 => 'Tuesday',
-            3 => 'Wednesday',
-            4 => 'Thursday',
-            5 => 'Friday',
-            6 => 'Saturday',
-        ];
-
         switch ($schedule->frequency) {
             case 'daily':
                 $next = $now->copy()->addDay()->setTime($hour, $minute);
                 break;
             case 'weekly':
-                // APMOERP68-FIX: Use Carbon-compatible day name instead of number
+                // APMOERP68-FIX: Use Carbon-compatible day name from class constant
                 $dayOfWeek = $schedule->day_of_week ?? 1;
-                $dayName = $dayMap[$dayOfWeek] ?? 'Monday';
+                $dayName = self::DAY_OF_WEEK_MAP[$dayOfWeek] ?? 'Monday';
                 $next = $now->copy()->next($dayName)->setTime($hour, $minute);
                 break;
             case 'monthly':
