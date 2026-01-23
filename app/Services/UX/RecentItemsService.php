@@ -183,9 +183,9 @@ class RecentItemsService
             'customer' => route('customers.edit', $itemId),
             'sale' => route('app.sales.show', $itemId),
             'purchase' => route('app.purchases.show', $itemId),
-            'invoice' => route('app.rental.invoices.index'),
+            'invoice' => route('app.rental.contracts.index'),
             'supplier' => route('suppliers.edit', $itemId),
-            'report' => route('admin.reports.index'),
+            'report' => route('admin.reports.module', ['module' => $itemId]),
             default => '#',
         };
     }
