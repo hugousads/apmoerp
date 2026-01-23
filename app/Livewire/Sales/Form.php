@@ -44,8 +44,6 @@ class Form extends Component
 
     public string $notes = '';
 
-    public string $customer_notes = '';
-
     public string $internal_notes = '';
 
     public string $delivery_date = '';
@@ -128,7 +126,6 @@ class Form extends Component
             'status' => 'required|in:draft,pending,completed,cancelled,refunded',
             'currency' => 'nullable|string|max:3',
             'notes' => 'nullable|string',
-            'customer_notes' => 'nullable|string|max:1000',
             'internal_notes' => 'nullable|string|max:1000',
             'delivery_date' => 'nullable|date',
             'shipping_method' => 'nullable|string|max:191',
@@ -181,7 +178,6 @@ class Form extends Component
             $this->status = $sale->status ?? 'completed';
             $this->currency = $sale->currency ?? 'EGP';
             $this->notes = $sale->notes ?? '';
-            $this->customer_notes = $sale->customer_notes ?? '';
             $this->internal_notes = $sale->internal_notes ?? '';
             $this->delivery_date = $sale->delivery_date?->format('Y-m-d') ?? '';
             $this->shipping_method = $sale->shipping_method ?? '';

@@ -41,9 +41,7 @@ class Form extends Component
 
     public string $internal_notes = '';
 
-    public string $expected_delivery_date = '';
-
-    public string $actual_delivery_date = '';
+    public string $expected_date = '';
 
     public string $shipping_method = '';
 
@@ -119,8 +117,7 @@ class Form extends Component
             'notes' => 'nullable|string',
             'supplier_notes' => 'nullable|string|max:1000',
             'internal_notes' => 'nullable|string|max:1000',
-            'expected_delivery_date' => 'nullable|date',
-            'actual_delivery_date' => 'nullable|date',
+            'expected_date' => 'nullable|date',
             'shipping_method' => 'nullable|string|max:191',
             'discount_total' => 'nullable|numeric|min:0',
             'shipping_total' => 'nullable|numeric|min:0',
@@ -161,8 +158,7 @@ class Form extends Component
             $this->notes = $purchase->notes ?? '';
             $this->supplier_notes = $purchase->supplier_notes ?? '';
             $this->internal_notes = $purchase->internal_notes ?? '';
-            $this->expected_delivery_date = $purchase->expected_delivery_date?->format('Y-m-d') ?? '';
-            $this->actual_delivery_date = $purchase->actual_delivery_date?->format('Y-m-d') ?? '';
+            $this->expected_date = $purchase->expected_date?->format('Y-m-d') ?? '';
             $this->shipping_method = $purchase->shipping_method ?? '';
             $this->discount_total = decimal_float($purchase->discount_total ?? 0);
             $this->shipping_total = decimal_float($purchase->shipping_total ?? 0);
@@ -319,7 +315,7 @@ class Form extends Component
                             'status' => $this->status,
                             'currency' => $this->currency,
                             'notes' => $this->notes,
-                            'expected_date' => $this->expected_delivery_date ?: null,
+                            'expected_date' => $this->expected_date ?: null,
                             'purchase_date' => $purchaseDate,
                             // Use correct migration column names
                             'subtotal' => $this->subTotal,
