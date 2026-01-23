@@ -28,10 +28,30 @@
             <h3 class="font-medium text-gray-800 border-b pb-2">{{ __('Basic Information') }}</h3>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {{-- Label first - most important for users --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Field Key') }} *</label>
-                    <input type="text" wire:model="field_key" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500" placeholder="e.g. wood_type" {{ $fieldId ? 'disabled' : '' }}>
-                    <p class="text-xs text-gray-500 mt-1">{{ __('Lowercase letters, numbers and underscores only') }}</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Label (English)') }} *</label>
+                    <input type="text" wire:model.live="field_label" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500">
+                    @error('field_label') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Label (Arabic)') }}</label>
+                    <input type="text" wire:model="field_label_ar" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500" dir="rtl">
+                </div>
+                
+                {{-- Field key is auto-generated but shown for reference --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ __('Field Key') }}
+                        @if(!$fieldId)
+                            <span class="text-xs text-gray-400 font-normal">({{ __('auto-generated') }})</span>
+                        @endif
+                    </label>
+                    <input type="text" wire:model="field_key" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 {{ !$fieldId ? 'bg-gray-50 text-gray-500' : '' }}" 
+                           placeholder="{{ __('Auto-generated from label...') }}"
+                           {{ $fieldId ? 'disabled' : '' }}>
                     @error('field_key') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
                 
@@ -42,17 +62,6 @@
                             <option value="{{ $key }}">{{ __($label) }}</option>
                         @endforeach
                     </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Label (English)') }} *</label>
-                    <input type="text" wire:model="field_label" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500">
-                    @error('field_label') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Label (Arabic)') }}</label>
-                    <input type="text" wire:model="field_label_ar" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500" dir="rtl">
                 </div>
                 
                 <div>
@@ -84,9 +93,23 @@
                     <input type="text" wire:model="default_value" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500">
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Validation Rules') }}</label>
-                    <input type="text" wire:model="validation_rules" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500" placeholder="e.g. required|max:255">
+                {{-- Validation is now user-friendly with checkboxes --}}
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Validation') }}</label>
+                    <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" wire:model="is_required" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500">
+                            <span class="text-sm text-gray-700">{{ __('This field is required') }}</span>
+                        </label>
+                        
+                        {{-- Hidden validation rules - only visible to advanced users --}}
+                        @if(!empty($validation_rules))
+                        <div class="pt-2 border-t border-gray-200">
+                            <p class="text-xs text-gray-500 mb-1">{{ __('Additional validation rules (advanced):') }}</p>
+                            <code class="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">{{ $validation_rules }}</code>
+                        </div>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

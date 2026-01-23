@@ -381,7 +381,8 @@ class InventoryController extends BaseApiController
         }
 
         // Try default warehouse from settings scoped to branch if provided
-        $defaultWarehouseId = setting('default_warehouse_id');
+        // Use canonical key inventory.default_warehouse_id as defined in config/settings.php
+        $defaultWarehouseId = setting('inventory.default_warehouse_id');
         if ($defaultWarehouseId !== null) {
             $defaultWarehouse = Warehouse::query()
                 ->where('id', $defaultWarehouseId)

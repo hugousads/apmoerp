@@ -159,7 +159,10 @@ class PermissionsSeeder extends Seeder
     {
         return [
             'inventory.view',
+            'inventory.manage',
             'inventory.products.view',
+            'inventory.products.create',
+            'inventory.products.update',
             'inventory.products.manage',
             'inventory.categories.view',
             'inventory.categories.manage',
@@ -199,6 +202,8 @@ class PermissionsSeeder extends Seeder
             'sales.void',
             'sales.return',
             'sales.manage',
+            'sales.export',
+            'sales.import',
             'sales.installments.view',
         ];
     }
@@ -290,6 +295,7 @@ class PermissionsSeeder extends Seeder
             'fixed-assets.view',
             'fixed-assets.create',
             'fixed-assets.edit',
+            'fixed-assets.manage',
         ];
     }
 
@@ -334,6 +340,7 @@ class PermissionsSeeder extends Seeder
     protected function getRentalPermissions(): array
     {
         return [
+            'rental.view',
             'rental.units.view',
             'rental.units.create',
             'rental.units.update',
@@ -370,6 +377,7 @@ class PermissionsSeeder extends Seeder
     {
         return [
             'manufacturing.view',
+            'manufacturing.manage',
             'manufacturing.create',
             'manufacturing.update',
             'manufacturing.edit',
@@ -423,6 +431,15 @@ class PermissionsSeeder extends Seeder
             'reports.pos.export',
             'reports.templates.manage',
             'reports.scheduled.manage',
+            // Aliases used by routes/sidebar (for compatibility)
+            'reports.schedule',
+            'reports.templates',
+            // View-reports permissions used by sidebar
+            'sales.view-reports',
+            'inventory.view-reports',
+            'pos.view-reports',
+            'hrm.view-reports',
+            'rental.view-reports',
         ];
     }
 

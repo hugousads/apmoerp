@@ -33,7 +33,7 @@ class ReportTemplatesManager extends Component
 
     public string $defaultFiltersJson = '{}';
 
-    public string $outputType = 'web';
+    public string $outputType = 'html';
 
     public string $exportColumnsText = '';
 
@@ -69,7 +69,7 @@ class ReportTemplatesManager extends Component
         return view('livewire.admin.reports.templates-manager', [
             'templates' => $templates,
             'availableRoutes' => $this->availableRoutes,
-            'outputTypes' => ['web', 'excel', 'pdf'],
+            'outputTypes' => ['html', 'xlsx', 'pdf'],
         ]);
     }
 
@@ -97,7 +97,7 @@ class ReportTemplatesManager extends Component
             'description' => ['nullable', 'string', 'max:255'],
             'routeName' => ['required', 'string', 'max:191'],
             'defaultFiltersJson' => ['nullable', 'string'],
-            'outputType' => ['required', 'string', Rule::in(['web', 'excel', 'pdf'])],
+            'outputType' => ['required', 'string', Rule::in(['html', 'xlsx', 'pdf'])],
             'exportColumnsText' => ['nullable', 'string', 'max:1000'],
             'isActive' => ['boolean'],
         ];
@@ -146,7 +146,7 @@ class ReportTemplatesManager extends Component
         $this->description = $template->description;
         $this->routeName = $template->route_name;
         $this->defaultFiltersJson = json_encode($template->default_filters ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        $this->outputType = $template->output_type ?? 'web';
+        $this->outputType = $template->output_type ?? 'html';
         $this->exportColumnsText = is_array($template->export_columns) ? implode(',', $template->export_columns) : '';
         $this->isActive = (bool) $template->is_active;
         $this->overrideKey = true; // When editing, key is already set
@@ -216,7 +216,7 @@ class ReportTemplatesManager extends Component
         $this->description = null;
         $this->routeName = '';
         $this->defaultFiltersJson = '{}';
-        $this->outputType = 'web';
+        $this->outputType = 'html';
         $this->exportColumnsText = '';
         $this->isActive = true;
         $this->showAdvanced = false;

@@ -188,22 +188,30 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                             {{ __('Advanced Settings') }}
+                            <span class="text-[9px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">{{ __('Technical') }}</span>
                         </button>
                     </div>
 
                     @if($showAdvanced)
-                    <div class="space-y-3 pl-2 border-l-2 border-slate-100">
+                    <div class="space-y-3 pl-2 border-l-2 border-amber-200 bg-amber-50/30 rounded p-2">
+                        <p class="text-[10px] text-amber-700 mb-2">
+                            <svg class="inline w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            {{ __('Advanced settings require technical knowledge. For most cases, use the schedule options above.') }}
+                        </p>
                         <div>
                             <label class="block text-[11px] font-medium text-slate-500 mb-0.5">
                                 {{ __('Cron Expression') }}
+                                <span class="text-[9px] text-slate-400">({{ __('read-only, generated from schedule') }})</span>
                             </label>
-                            <input type="text" wire:model="cronExpression"
-                                   class="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs font-mono">
+                            <input type="text" wire:model="cronExpression" readonly
+                                   class="w-full rounded border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-mono text-slate-500 cursor-not-allowed">
                             @error('cronExpression')
                             <p class="mt-0.5 text-[11px] text-red-500">{{ $message }}</p>
                             @enderror
                             <p class="mt-0.5 text-[10px] text-slate-400">
-                                {{ __('Auto-generated from schedule above') }}
+                                {{ __('Auto-generated from schedule above. Change the schedule options to modify.') }}
                             </p>
                         </div>
 
@@ -223,13 +231,17 @@
                         <div>
                             <label class="block text-[11px] font-medium text-slate-500 mb-0.5">
                                 {{ __('Custom Filters (JSON)') }}
+                                <span class="text-[9px] text-amber-600">({{ __('optional, for developers') }})</span>
                             </label>
                             <textarea wire:model="filtersJson" rows="3"
                                       placeholder='{"branch_id": 1}'
-                                      class="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs font-mono"></textarea>
+                                      class="w-full rounded border border-amber-200 bg-white px-2 py-1 text-xs font-mono"></textarea>
                             @error('filtersJson')
                             <p class="mt-0.5 text-[11px] text-red-500">{{ $message }}</p>
                             @enderror
+                            <p class="mt-0.5 text-[10px] text-slate-400">
+                                {{ __('Filters will override template defaults. Leave empty to use template filters.') }}
+                            </p>
                         </div>
                     </div>
                     @endif

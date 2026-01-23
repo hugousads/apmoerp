@@ -13,8 +13,8 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class PurchasesSettings extends Component
 {
-    // Purchase settings
-    public string $purchase_invoice_prefix = 'PO-';
+    // Purchase settings - using canonical key names from config/settings.php
+    public string $purchase_order_prefix = 'PO-';
 
     public int $purchase_invoice_starting_number = 1000;
 
@@ -50,7 +50,11 @@ class PurchasesSettings extends Component
             return SystemSetting::where('group', 'purchases')->pluck('value', 'key')->toArray();
         });
 
-        $this->purchase_invoice_prefix = $settings['purchases.invoice_prefix'] ?? 'PO-';
+        // Use canonical key purchases.purchase_order_prefix that matches config/settings.php
+        // Also support legacy key purchases.invoice_prefix for backwards compatibility
+        $this->purchase_order_prefix = $settings['purchases.purchase_order_prefix']
+            ?? $settings['purchases.invoice_prefix']
+            ?? 'PO-';
         $this->purchase_invoice_starting_number = (int) ($settings['purchases.invoice_starting_number'] ?? 1000);
         $this->purchase_payment_terms_days = (int) ($settings['purchases.payment_terms_days'] ?? 30);
         $this->auto_receive_on_purchase = (bool) ($settings['purchases.auto_receive_on_purchase'] ?? false);
@@ -77,14 +81,16 @@ class PurchasesSettings extends Component
     public function save(): mixed
     {
         $this->validate([
-            'purchase_invoice_prefix' => 'required|string|max:10',
+            'purchase_order_prefix' => 'required|string|max:10',
             'purchase_invoice_starting_number' => 'required|integer|min:1',
             'purchase_payment_terms_days' => 'required|integer|min:0|max:365',
             'purchase_approval_threshold' => 'required|numeric|min:0',
             'grn_validity_days' => 'required|integer|min:1|max:90',
         ]);
 
-        $this->setSetting('purchases.invoice_prefix', $this->purchase_invoice_prefix);
+        // Use canonical key purchases.purchase_order_prefix as defined in config/settings.php
+        // This matches what Purchase model uses: setting('purchases.purchase_order_prefix', 'PO-')
+        $this->setSetting('purchases.purchase_order_prefix', $this->purchase_order_prefix);
         $this->setSetting('purchases.invoice_starting_number', $this->purchase_invoice_starting_number);
         $this->setSetting('purchases.payment_terms_days', $this->purchase_payment_terms_days);
         $this->setSetting('purchases.auto_receive_on_purchase', $this->auto_receive_on_purchase);
@@ -97,6 +103,7 @@ class PurchasesSettings extends Component
 
         Cache::forget('purchases_settings');
         Cache::forget('system_settings_all');
+        Cache::forget('system_settings');
 
         session()->flash('success', __('Purchase settings saved successfully'));
 

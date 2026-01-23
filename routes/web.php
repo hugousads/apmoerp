@@ -1321,13 +1321,10 @@ Route::middleware('auth')->group(function () {
                 ->name('scheduled')
                 ->middleware('can:reports.schedule');
 
-            Route::get('/scheduled/create', \App\Livewire\Reports\ScheduledReports\Form::class)
-                ->name('scheduled.create')
-                ->middleware('can:reports.manage');
-
-            Route::get('/scheduled/{schedule}/edit', \App\Livewire\Reports\ScheduledReports\Form::class)
-                ->name('scheduled.edit')
-                ->middleware('can:reports.manage');
+            // Note: scheduled/create and scheduled/edit routes removed
+            // The ScheduledReportsManager component handles inline create/edit
+            // This avoids the dual-system issue where create/edit used report_schedules
+            // while ScheduledReportsManager used scheduled_reports table
 
             Route::get('/templates', ReportTemplatesManager::class)
                 ->name('templates')

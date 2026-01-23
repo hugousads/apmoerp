@@ -118,6 +118,32 @@ class Form extends Component
         $this->field_group = $field->field_group ?? '';
     }
 
+    /**
+     * Auto-generate field_key from field_label when creating a new field
+     * This makes it easier for non-technical admins
+     */
+    public function updatedFieldLabel(): void
+    {
+        // Only auto-generate if not editing an existing field
+        // Always regenerate when creating new field to keep label and key in sync
+        if (! $this->fieldId) {
+            $this->field_key = $this->generateFieldKey($this->field_label);
+        }
+    }
+
+    protected function generateFieldKey(string $label): string
+    {
+        // First lowercase the label
+        $key = strtolower(trim($label));
+        // Replace any non-lowercase letter with underscore (matching pattern [a-z_]+)
+        $key = preg_replace('/[^a-z]+/', '_', $key);
+        $key = preg_replace('/_+/', '_', $key); // Remove consecutive underscores
+        $key = trim($key, '_'); // Remove leading/trailing underscores
+        
+        // Ensure it's not empty
+        return $key ?: 'custom_field';
+    }
+
     public function addOption(): void
     {
         if (! empty($this->newOptionKey) && ! empty($this->newOptionValue)) {
