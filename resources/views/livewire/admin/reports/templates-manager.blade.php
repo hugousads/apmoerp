@@ -158,6 +158,9 @@
                                 <option value="xlsx">{{ __('Excel (.xlsx)') }}</option>
                                 <option value="pdf">{{ __('PDF Document') }}</option>
                             </select>
+                            <p class="mt-0.5 text-[10px] text-amber-600">
+                                {{ __('Note: Export generation is only available for Store Dashboard reports currently') }}
+                            </p>
                             @error('outputType')
                             <p class="mt-0.5 text-[11px] text-red-500">{{ $message }}</p>
                             @enderror
