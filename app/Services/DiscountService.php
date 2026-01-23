@@ -53,7 +53,8 @@ class DiscountService implements DiscountServiceInterface
                 $qty = max(0.0, $qty);
                 $price = max(0.0, $price);
 
-                $subtotal = $qty * $price;
+                // FIX: Use bcmul for financial precision
+                $subtotal = decimal_float(bcmul((string) $qty, (string) $price, 4), 4);
 
                 $discount = $this->sanitize($discount, $percent);
 
