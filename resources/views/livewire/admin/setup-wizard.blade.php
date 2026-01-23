@@ -112,8 +112,8 @@
                                 <div>
                                     <label class="erp-label">{{ __('Language') }} <span class="text-red-500">*</span></label>
                                     <select wire:model="locale" class="erp-input">
-                                        <option value="ar">العربية</option>
-                                        <option value="en">English</option>
+                                        <option value="ar">{{ __('Arabic') }}</option>
+                                        <option value="en">{{ __('English') }}</option>
                                     </select>
                                 </div>
                             </div>
