@@ -323,8 +323,7 @@ return new class extends Migration
                 ->name('fk_rtnrfnd_customer__cust');
             $table->decimal('amount', 18, 2);
             $table->string('currency', 10)->default('USD');
-            $table->string('method', 50); // cash, card, bank_transfer, credit_note
-            $table->string('refund_method', 50)->nullable(); // Alias for method
+            $table->string('refund_method', 50); // cash, bank_transfer, credit_card, store_credit, original_method
             $table->string('reference_number', 100)->nullable();
             $table->string('transaction_id', 191)->nullable();
             $table->string('status', 30)->default('pending');

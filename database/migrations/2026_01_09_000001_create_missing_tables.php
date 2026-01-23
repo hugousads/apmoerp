@@ -276,14 +276,6 @@ return new class extends Migration
             $table->index('product_id', 'idx_quotei_product_id');
         });
 
-        // Add FK from quotes to sales for conversion tracking
-        Schema::table('quotes', function (Blueprint $table) {
-            $table->foreign('converted_to_sale_id', 'fk_quote_converted__sale')
-                ->references('id')
-                ->on('sales')
-                ->nullOnDelete();
-        });
-
         // Update purchase_requisitions to have proper FK for departments and cost_centers
         // Note: department_id is currently string, we need to update validation rules instead
         // The existing column is varchar(50), so we'll add new nullable FK columns
