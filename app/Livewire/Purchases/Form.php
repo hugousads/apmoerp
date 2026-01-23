@@ -37,10 +37,6 @@ class Form extends Component
 
     public string $notes = '';
 
-    public string $supplier_notes = '';
-
-    public string $internal_notes = '';
-
     public string $expected_date = '';
 
     public string $shipping_method = '';
@@ -115,8 +111,6 @@ class Form extends Component
             'status' => 'required|in:draft,pending,posted,received,cancelled',
             'currency' => 'nullable|string|max:3',
             'notes' => 'nullable|string',
-            'supplier_notes' => 'nullable|string|max:1000',
-            'internal_notes' => 'nullable|string|max:1000',
             'expected_date' => 'nullable|date',
             'shipping_method' => 'nullable|string|max:191',
             'discount_total' => 'nullable|numeric|min:0',
