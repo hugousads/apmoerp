@@ -48,16 +48,15 @@ class PurchaseStoreRequest extends FormRequest
             'items.*.qty' => ['required', 'numeric', 'gt:0'],
             'items.*.price' => ['required', 'numeric', 'gte:0'],
             // New tracking fields
-            'expected_delivery_date' => ['nullable', 'date'],
-            'actual_delivery_date' => ['nullable', 'date'],
+            'expected_date' => ['nullable', 'date'],
             'shipping_method' => $this->multilingualString(required: false, max: 191),
             'supplier_notes' => $this->unicodeText(required: false, max: 1000),
             'internal_notes' => $this->unicodeText(required: false, max: 1000),
             // Payment fields
             'payment_status' => ['nullable', 'in:unpaid,partial,paid'],
-            'payment_due_date' => ['nullable', 'date'],
+            'due_date' => ['nullable', 'date'],
             'discount_type' => ['nullable', 'in:fixed,percentage'],
-            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'discount_amount' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }
