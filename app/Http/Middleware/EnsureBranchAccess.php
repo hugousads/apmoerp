@@ -38,10 +38,15 @@ class EnsureBranchAccess
             return $next($request);
         }
 
-        // Permission-based bypass (e.g., wildcard permission or specific access-all permission)
-        if (method_exists($user, 'hasPermissionTo')) {
-            if ($user->hasPermissionTo('*') || $user->hasPermissionTo('access-all-branches')) {
-                return $next($request);
+        // Permission-based bypass (e.g., specific access-all permission)
+        // V35-SAFE-PERM FIX: Use checkPermissionTo() to avoid exception when permission doesn't exist in DB
+        if (method_exists($user, 'checkPermissionTo')) {
+            try {
+                if ($user->checkPermissionTo('access-all-branches')) {
+                    return $next($request);
+                }
+            } catch (\Spatie\Permission\Exceptions\PermissionDoesNotExist $e) {
+                // Permission doesn't exist, continue to other checks
             }
         }
 
