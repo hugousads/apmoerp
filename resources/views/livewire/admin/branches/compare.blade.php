@@ -53,7 +53,7 @@
             <div class="flex items-end">
                 <button wire:click="compare" 
                         class="erp-btn-primary w-full"
-                        @if(!$branch1Id || !$branch2Id) disabled @endif>
+                        @if(!$branch1Id || !$branch2Id) disabled aria-disabled="true" @endif>
                     {{ __('Compare') }}
                 </button>
             </div>
