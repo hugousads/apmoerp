@@ -73,11 +73,11 @@ class Form extends Component
     {
         if ($id) {
             $this->quotation = SupplierQuotation::with('items')->findOrFail($id);
-            $this->authorize('update', $this->quotation);
+            $this->authorize('purchases.manage');
             $this->quotationId = $id;
             $this->loadQuotation();
         } else {
-            $this->authorize('create', SupplierQuotation::class);
+            $this->authorize('purchases.manage');
             $this->quotation_date = now()->format('Y-m-d');
             $this->calculateValidUntil();
             $this->addItem();
@@ -171,11 +171,7 @@ class Form extends Component
 
         // V56-CRITICAL-NEW-01 FIX: Re-authorize on save() to prevent CSRF/timing attacks
         // where authorization might change between mount() and save() calls
-        if ($this->quotation) {
-            $this->authorize('update', $this->quotation);
-        } else {
-            $this->authorize('create', SupplierQuotation::class);
-        }
+        $this->authorize('purchases.manage');
 
         // V56-CRITICAL-NEW-01 FIX: Wrap all database operations in a transaction
         // to ensure data consistency (quotation + items are saved atomically)

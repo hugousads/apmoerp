@@ -46,7 +46,7 @@ class Index extends Component
 
     public function accept($id)
     {
-        $this->authorize('update', SupplierQuotation::class);
+        $this->authorize('purchases.manage');
 
         $quotation = SupplierQuotation::findOrFail($id);
 
@@ -68,7 +68,7 @@ class Index extends Component
 
     public function reject($id, $reason = null)
     {
-        $this->authorize('update', SupplierQuotation::class);
+        $this->authorize('purchases.manage');
 
         $quotation = SupplierQuotation::findOrFail($id);
 
@@ -85,7 +85,7 @@ class Index extends Component
 
     public function delete($id)
     {
-        $this->authorize('delete', SupplierQuotation::class);
+        $this->authorize('purchases.manage');
 
         SupplierQuotation::findOrFail($id)->delete();
 

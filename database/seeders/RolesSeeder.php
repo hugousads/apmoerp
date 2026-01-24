@@ -152,6 +152,8 @@ class RolesSeeder extends Seeder
             'purchases.pay',
             'purchases.receive',
             'purchases.return',
+            'purchases.import',
+            'purchases.export',
             // Customers
             'customers.view',
             'customers.create',
@@ -182,6 +184,7 @@ class RolesSeeder extends Seeder
             'fixed-assets.view',
             'fixed-assets.create',
             'fixed-assets.edit',
+            'fixed-assets.manage',
             // HRM
             'hrm.view',
             'hrm.employees.view',
@@ -196,6 +199,8 @@ class RolesSeeder extends Seeder
             'hrm.payroll.manage',
             'hrm.shifts.view',
             'hrm.shifts.manage',
+            'hrm.manage',
+            'hrm.view-reports',
             'hr.manage-employees',
             'hr.view-reports',
             // Projects
@@ -207,6 +212,7 @@ class RolesSeeder extends Seeder
             'projects.expenses.manage',
             'projects.timelogs.manage',
             // Rental
+            'rental.view',
             'rental.units.view',
             'rental.units.create',
             'rental.units.update',
@@ -236,6 +242,7 @@ class RolesSeeder extends Seeder
             'documents.share',
             'documents.download',
             'documents.tags.create',
+            'documents.tags.manage',
             // Helpdesk
             'helpdesk.view',
             'helpdesk.create',
@@ -426,6 +433,8 @@ class RolesSeeder extends Seeder
             'hrm.payroll.manage',
             'hrm.shifts.view',
             'hrm.shifts.manage',
+            'hrm.manage',
+            'hrm.view-reports',
             'hr.manage-employees',
             'hr.view-reports',
             // Branch employees

@@ -21,7 +21,7 @@ class Compare extends Component
 
     public function mount()
     {
-        $this->authorize('view', SupplierQuotation::class);
+        $this->authorize('purchases.view');
     }
 
     public function updatedRequisitionId()
@@ -84,7 +84,7 @@ class Compare extends Component
 
     public function acceptBest()
     {
-        $this->authorize('update', SupplierQuotation::class);
+        $this->authorize('purchases.manage');
 
         if ($this->quotations->isEmpty()) {
             session()->flash('error', __('No quotations to compare'));
