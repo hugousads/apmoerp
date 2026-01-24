@@ -90,7 +90,7 @@ return new class extends Migration
             $table->string('employment_type', 30)->default('full_time'); // full_time, part_time, contract, intern
             $table->string('status', 30)->default('active'); // active, probation, on_leave, terminated, resigned
             $table->boolean('is_active')->default(true);
-            $table->decimal('basic_salary', 18, 4)->default(0);
+            $table->decimal('salary', 18, 4)->default(0);
             $table->string('salary_currency', 10)->default('USD');
             $table->string('payment_method', 50)->nullable();
             $table->string('bank_name', 100)->nullable();
@@ -502,7 +502,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('month');
             $table->string('status', 30)->default('draft'); // draft, calculated, approved, paid
             // Earnings
-            $table->decimal('basic_salary', 18, 4)->default(0);
+            $table->decimal('salary', 18, 4)->default(0);
             $table->decimal('housing_allowance', 18, 4)->default(0);
             $table->decimal('transport_allowance', 18, 4)->default(0);
             $table->decimal('meal_allowance', 18, 4)->default(0);

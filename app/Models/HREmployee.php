@@ -58,7 +58,7 @@ class HREmployee extends BaseModel
         'status',
         'is_active',
         // Salary info
-        'basic_salary',
+        'salary',
         'salary_currency',
         'payment_method',
         'bank_name',
@@ -87,7 +87,7 @@ class HREmployee extends BaseModel
 
     protected $casts = [
         'is_active' => 'boolean',
-        'basic_salary' => 'decimal:4',
+        'salary' => 'decimal:4',
         'housing_allowance' => 'decimal:4',
         'transport_allowance' => 'decimal:4',
         'meal_allowance' => 'decimal:4',
@@ -161,11 +161,6 @@ class HREmployee extends BaseModel
     public function getNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);
-    }
-
-    public function getSalaryAttribute()
-    {
-        return $this->basic_salary;
     }
 
     public function getDateOfBirthAttribute()
