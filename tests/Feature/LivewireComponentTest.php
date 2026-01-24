@@ -13,6 +13,8 @@ use Tests\TestCase;
  */
 class LivewireComponentTest extends TestCase
 {
+    private const MAX_FAILURES_TO_DISPLAY = 10;
+    
     /**
      * Get all Livewire component classes.
      */
@@ -131,12 +133,12 @@ class LivewireComponentTest extends TestCase
         if (!empty($failures)) {
             $failureMessages = array_map(function($f) {
                 return "{$f['class']}: {$f['error']}";
-            }, array_slice($failures, 0, 10)); // Limit to first 10 for readability
+            }, array_slice($failures, 0, self::MAX_FAILURES_TO_DISPLAY));
             
             $this->fail(
                 "Livewire component render failures ({$failCount} failed, {$passCount} passed, {$skipCount} skipped):\n" . 
                 implode("\n", $failureMessages) .
-                ($failCount > 10 ? "\n...and " . ($failCount - 10) . " more failures" : "")
+                ($failCount > self::MAX_FAILURES_TO_DISPLAY ? "\n...and " . ($failCount - self::MAX_FAILURES_TO_DISPLAY) . " more failures" : "")
             );
         }
         

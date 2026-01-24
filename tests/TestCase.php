@@ -52,12 +52,13 @@ abstract class TestCase extends BaseTestCase
      */
     protected function createRegularUser(): User
     {
-        $user = User::where('email', 'employee@ghanem-erp.com')->first();
+        $testEmail = 'test-employee@test.com';
+        $user = User::where('email', $testEmail)->first();
         
         if (!$user) {
             $branch = Branch::first();
             $user = User::factory()->create([
-                'email' => 'test-employee@test.com',
+                'email' => $testEmail,
                 'name' => 'Test Employee',
                 'branch_id' => $branch?->id,
                 'is_active' => true,
