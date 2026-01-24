@@ -42,6 +42,19 @@ class Handler extends ExceptionHandler
                     ->with('info', __('Your session was refreshed. Please try again.'));
             }
 
+            // Handle 403 Authorization errors for Livewire requests
+            // This prevents the "replaceWith" error when Livewire receives HTML instead of JSON
+            // Note: abort(403) creates HttpException, while Gate/Policy denials create AuthorizationException
+            if ($e instanceof \Illuminate\Auth\Access\AuthorizationException 
+                || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException && $e->getStatusCode() === 403)) {
+                if ($request->is('livewire/*') || $request->hasHeader('X-Livewire')) {
+                    return response()->json([
+                        'message' => __('You do not have permission to perform this action.'),
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
+            }
+
             if ($request->is('api/*') || $request->wantsJson()) {
                 return $this->renderBusinessException($e, $request);
             }
