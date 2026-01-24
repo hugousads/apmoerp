@@ -291,15 +291,53 @@ async function cacheFirstWithNetwork(request, cacheName) {
     try {
         const cachedResponse = await caches.match(request);
         if (cachedResponse) {
-            // Update cache in background
-            updateCache(request, cacheName);
-            return cachedResponse;
+            // Validate cached response - don't serve HTML for JS/CSS requests
+            const contentType = cachedResponse.headers.get('content-type') || '';
+            const requestUrl = new URL(request.url);
+            
+            // If requesting JS but cached response is HTML, invalidate cache
+            if (requestUrl.pathname.endsWith('.js') && contentType.includes('text/html')) {
+                console.warn('[SW] Invalid cache: HTML cached for JS file', requestUrl.pathname);
+                const cache = await caches.open(cacheName);
+                await cache.delete(request);
+                // Fall through to network request
+            } else if (requestUrl.pathname.endsWith('.css') && contentType.includes('text/html')) {
+                console.warn('[SW] Invalid cache: HTML cached for CSS file', requestUrl.pathname);
+                const cache = await caches.open(cacheName);
+                await cache.delete(request);
+                // Fall through to network request
+            } else {
+                // Update cache in background
+                updateCache(request, cacheName);
+                return cachedResponse;
+            }
         }
 
         const networkResponse = await fetch(request);
         if (networkResponse.ok && networkResponse.status === 200) {
-            const cache = await caches.open(cacheName);
-            cache.put(request, networkResponse.clone());
+            const contentType = networkResponse.headers.get('content-type') || '';
+            const requestUrl = new URL(request.url);
+            
+            // Only cache if content-type matches the request
+            let shouldCache = true;
+            if (requestUrl.pathname.endsWith('.js')) {
+                // Check for valid JavaScript MIME types
+                const isValidJs = contentType.includes('application/javascript') || 
+                                 contentType.includes('text/javascript') || 
+                                 contentType.includes('application/ecmascript');
+                if (!isValidJs) {
+                    shouldCache = false;
+                    console.warn('[SW] Not caching: Invalid content-type for JS file', requestUrl.pathname, contentType);
+                }
+            } else if (requestUrl.pathname.endsWith('.css') && !contentType.includes('css')) {
+                shouldCache = false;
+                console.warn('[SW] Not caching: Invalid content-type for CSS file', requestUrl.pathname, contentType);
+            }
+            
+            if (shouldCache) {
+                const cache = await caches.open(cacheName);
+                cache.put(request, networkResponse.clone());
+            }
         }
         return networkResponse;
     } catch (error) {
