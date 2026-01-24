@@ -393,6 +393,9 @@ const KeyboardShortcuts = {
     handleKeydown(e) {
         if (!this.enabled) return;
         
+        // Safety check: ensure e.key exists
+        if (!e || !e.key) return;
+        
         // Don't intercept when typing in inputs/textareas
         const activeEl = document.activeElement;
         const isEditing = activeEl && (
