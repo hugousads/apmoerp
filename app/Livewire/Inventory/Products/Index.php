@@ -116,7 +116,6 @@ class Index extends Component
             ->when($this->type !== null && $this->type !== '', fn ($q) => $q->where('products.type', $this->type))
             ->select([
                 'products.id',
-                'products.code',
                 'products.name',
                 'products.sku',
                 'products.barcode',

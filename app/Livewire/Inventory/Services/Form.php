@@ -131,7 +131,7 @@ class Form extends Component
 
         $this->moduleId = $product->module_id;
         $this->name = $product->name;
-        $this->code = $product->code ?? '';
+        $this->code = '';
         $this->sku = $product->sku ?? '';
         // V51-CRIT-02 FIX: Use decimal_float() with scale 4 to match decimal:4 schema for prices
         $this->defaultPrice = decimal_float($product->default_price, 4);
@@ -176,7 +176,6 @@ class Form extends Component
 
         $data = [
             'name' => $this->name,
-            'code' => $this->code ?: null,
             'sku' => $this->sku ?: null,
             'module_id' => $validatedModuleId,
             'type' => 'service',

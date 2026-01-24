@@ -194,7 +194,7 @@ class StockReorderService
             return [
                 'product_id' => $product->id,
                 'product_name' => $product->name,
-                'product_code' => $product->code,
+                'product_code' => $product->sku,
                 'sku' => $product->sku,
                 'current_stock' => $currentStock,
                 'reserved_stock' => $product->reserved_quantity,
