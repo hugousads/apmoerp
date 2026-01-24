@@ -157,15 +157,38 @@ class HREmployee extends BaseModel
             ->first();
     }
 
-    // Backward compatibility accessors
+    // Backward compatibility accessors and mutators
+    public function getCodeAttribute()
+    {
+        return $this->employee_code;
+    }
+
+    public function setCodeAttribute($value)
+    {
+        $this->attributes['employee_code'] = $value;
+    }
+
     public function getNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);
     }
 
+    public function setNameAttribute($value)
+    {
+        // When setting name, split it into first_name and last_name
+        $parts = explode(' ', trim($value), 2);
+        $this->attributes['first_name'] = $parts[0] ?? '';
+        $this->attributes['last_name'] = $parts[1] ?? '';
+    }
+
     public function getSalaryAttribute()
     {
         return $this->basic_salary;
+    }
+
+    public function setSalaryAttribute($value)
+    {
+        $this->attributes['basic_salary'] = $value;
     }
 
     public function getDateOfBirthAttribute()
