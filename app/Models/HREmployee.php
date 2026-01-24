@@ -157,53 +157,15 @@ class HREmployee extends BaseModel
             ->first();
     }
 
-    // Backward compatibility accessors and mutators
-    public function getCodeAttribute()
-    {
-        return $this->employee_code;
-    }
-
-    public function setCodeAttribute($value)
-    {
-        $this->attributes['employee_code'] = $value ? (string) $value : null;
-    }
-
+    // Backward compatibility accessors
     public function getNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);
     }
 
-    public function setNameAttribute($value)
-    {
-        // When setting name, split it into first_name and last_name
-        // Note: This assumes Western naming convention. For proper handling,
-        // use first_name and last_name directly when possible.
-        $value = trim((string) $value);
-        if ($value === '') {
-            $this->attributes['first_name'] = '';
-            $this->attributes['last_name'] = '';
-            return;
-        }
-        
-        $parts = explode(' ', $value, 2);
-        $this->attributes['first_name'] = $parts[0];
-        $this->attributes['last_name'] = $parts[1] ?? '';
-    }
-
     public function getSalaryAttribute()
     {
         return $this->basic_salary;
-    }
-
-    public function setSalaryAttribute($value)
-    {
-        // Let Eloquent's decimal:4 casting handle the conversion
-        // Just ensure we pass a numeric value or null
-        if ($value === null || $value === '') {
-            $this->attributes['basic_salary'] = null;
-        } else {
-            $this->attributes['basic_salary'] = $value;
-        }
     }
 
     public function getDateOfBirthAttribute()
@@ -224,9 +186,8 @@ class HREmployee extends BaseModel
     protected static function booted(): void
     {
         static::creating(function (self $employee): void {
-            // Generate employee code if not already set
             if (empty($employee->employee_code)) {
-                $employee->employee_code = 'EMP-'.Str::upper(Str::random(8));
+                $employee->employee_code = $employee->code ?? 'EMP-'.Str::upper(Str::random(8));
             }
             
             // Sync is_active with status on creation

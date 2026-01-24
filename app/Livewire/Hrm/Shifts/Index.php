@@ -82,7 +82,8 @@ class Index extends Component
             ->when($this->search !== '', function ($q) {
                 $term = '%'.$this->search.'%';
                 $q->where(function ($inner) use ($term) {
-                    $inner->where('name', 'like', $term);
+                    $inner->where('name', 'like', $term)
+                        ->orWhere('code', 'like', $term);
                 });
             })
             ->when($this->status === 'active', fn ($q) => $q->where('is_active', true))
