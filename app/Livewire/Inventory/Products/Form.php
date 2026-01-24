@@ -440,31 +440,20 @@ class Form extends Component
 
     /**
      * Resolve the effective branch ID for the current user.
-     * V78-FIX: Respects admin branch context from session for Super Admin/users with branches.view-all.
+     * V78-FIX: Uses BranchContextManager which respects middleware-set branch context.
      */
-    private function resolveBranchId(?object $user): int
+    private function resolveBranchId(?\App\Models\User $user): int
     {
         if (! $user) {
             return 0;
         }
 
-        // Check if user can switch branches (Super Admin or branches.view-all permission)
-        $canSwitchBranches = $user->hasRole('Super Admin') || $user->can('branches.view-all');
-
-        if ($canSwitchBranches) {
-            // Check session for admin_branch_context set by BranchSwitcher
-            $sessionBranchId = session('admin_branch_context');
-
-            if ($sessionBranchId !== null) {
-                // Validate the session branch ID is valid and active
-                $branchExists = \App\Models\Branch::where('id', $sessionBranchId)
-                    ->where('is_active', true)
-                    ->exists();
-
-                if ($branchExists) {
-                    return (int) $sessionBranchId;
-                }
-            }
+        // Use BranchContextManager which is already set by SetUserBranchContext middleware
+        // This respects the admin_branch_context session for Super Admin/users with branches.view-all
+        $contextBranchId = \App\Services\BranchContextManager::getCurrentBranchId();
+        
+        if ($contextBranchId !== null) {
+            return $contextBranchId;
         }
 
         // Fall back to user's primary branch_id
