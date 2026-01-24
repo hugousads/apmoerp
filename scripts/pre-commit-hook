@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Pre-commit hook to validate Livewire views
+# 
+# To install this hook:
+# 1. Make it executable: chmod +x scripts/pre-commit-hook
+# 2. Link it: ln -s ../../scripts/pre-commit-hook .git/hooks/pre-commit
+#
+# To bypass this check temporarily: git commit --no-verify
+
+echo "🔍 Validating Livewire views..."
+
+# Run the validation script
+php scripts/validate-livewire-views.php
+
+# Check exit code
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Livewire view validation failed!"
+    echo "   Please fix the issues above before committing."
+    echo ""
+    echo "   See docs/LIVEWIRE_ROOT_TAG.md for guidance."
+    echo ""
+    echo "   To bypass this check: git commit --no-verify"
+    exit 1
+fi
+
+echo "✓ All Livewire views are valid"
+exit 0
