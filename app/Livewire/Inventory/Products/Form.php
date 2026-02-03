@@ -86,7 +86,10 @@ class Form extends Component
 
         $user = Auth::user();
         $this->productId = $product;
-        $this->form['branch_id'] = (int) ($user?->branch_id ?? 0);
+        
+        // V78-FIX: Respect admin branch context for Super Admin/users with branches.view-all
+        $branchId = $this->resolveBranchId($user);
+        $this->form['branch_id'] = $branchId;
 
         if ($this->form['branch_id'] === 0) {
             abort(403);
@@ -317,7 +320,8 @@ class Form extends Component
         $this->authorize('inventory.products.manage');
 
         $user = Auth::user();
-        $this->form['branch_id'] = (int) ($user?->branch_id ?? $this->form['branch_id']);
+        // V78-FIX: Use resolveBranchId for consistency with mount()
+        $this->form['branch_id'] = $this->resolveBranchId($user);
         if ($this->form['branch_id'] === 0) {
             abort(403);
         }
@@ -432,5 +436,27 @@ class Form extends Component
             'categories' => $this->categories,
             'units' => $this->units,
         ]);
+    }
+
+    /**
+     * Resolve the effective branch ID for the current user.
+     * V78-FIX: Uses BranchContextManager which respects middleware-set branch context.
+     */
+    private function resolveBranchId(?\App\Models\User $user): int
+    {
+        if (! $user) {
+            return 0;
+        }
+
+        // Use BranchContextManager which is already set by SetUserBranchContext middleware
+        // This respects the admin_branch_context session for Super Admin/users with branches.view-all
+        $contextBranchId = \App\Services\BranchContextManager::getCurrentBranchId();
+        
+        if ($contextBranchId !== null) {
+            return $contextBranchId;
+        }
+
+        // Fall back to user's primary branch_id
+        return (int) ($user->branch_id ?? 0);
     }
 }
