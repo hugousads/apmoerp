@@ -449,10 +449,10 @@ class ScheduledReportService
             // Write headers
             $headers = array_keys($data[0]);
             $col = 1;
-            foreach ($headers as $header) {
-                $sheet->setCellValueByColumnAndRow($col, 1, ucwords(str_replace('_', ' ', $header)));
-                $col++;
-            }
+	            foreach ($headers as $header) {
+	                $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . '1', ucwords(str_replace('_', ' ', $header)));
+	                $col++;
+	            }
 
             // Style header row
             $headerStyle = [
@@ -469,10 +469,10 @@ class ScheduledReportService
             $row = 2;
             foreach ($data as $record) {
                 $col = 1;
-                foreach ($record as $value) {
-                    $sheet->setCellValueByColumnAndRow($col, $row, $value);
-                    $col++;
-                }
+	                foreach ($record as $value) {
+	                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . $row, $value);
+	                    $col++;
+	                }
                 $row++;
             }
 

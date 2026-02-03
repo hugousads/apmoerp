@@ -11,6 +11,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.app')]
 class Index extends Component
 {
     use AuthorizesRequests;
@@ -29,6 +30,19 @@ class Index extends Component
 
     public string $sortDirection = 'desc';
 
+    /**
+     * Hard allow-list of sortable fields to avoid SQL injection via orderBy.
+     */
+    protected array $allowedSortFields = [
+        'created_at',
+        'account_name',
+        'account_number',
+        'bank_name',
+        'current_balance',
+        'status',
+        'currency',
+    ];
+
     public function mount(): void
     {
         $this->authorize('banking.view');
@@ -41,6 +55,10 @@ class Index extends Component
 
     public function sortBy(string $field): void
     {
+        if (! in_array($field, $this->allowedSortFields, true)) {
+            return;
+        }
+
         if ($this->sortField === $field) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
@@ -51,10 +69,10 @@ class Index extends Component
 
     public function getStatistics(): array
     {
-        $branchId = auth()->user()->branch_id;
-
         // Optimize with single query using conditional aggregations
-        $stats = BankAccount::where('branch_id', $branchId)
+        // NOTE: BankAccount is branch-scoped. We intentionally DO NOT add manual branch filters here
+        // so that the report respects the current branch context (branch switcher).
+        $stats = BankAccount::query()
             ->selectRaw('
                 COUNT(*) as total_accounts,
                 COUNT(CASE WHEN status = ? THEN 1 END) as active_accounts,
@@ -71,12 +89,9 @@ class Index extends Component
         ];
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
-        $branchId = auth()->user()->branch_id;
-
-        $query = BankAccount::where('branch_id', $branchId);
+        $query = BankAccount::query();
 
         if ($this->search) {
             $query->where(function ($q) {
@@ -94,12 +109,16 @@ class Index extends Component
             $query->where('currency', $this->currency);
         }
 
+        // Defensive: ensure sortField is always safe (e.g. when set from query params).
+        if (! in_array($this->sortField, $this->allowedSortFields, true)) {
+            $this->sortField = 'created_at';
+        }
         $query->orderBy($this->sortField, $this->sortDirection);
 
         $accounts = $query->paginate(15);
         $statistics = $this->getStatistics();
 
-        $currencies = BankAccount::where('branch_id', $branchId)
+        $currencies = BankAccount::query()
             ->select('currency')
             ->distinct()
             ->pluck('currency');

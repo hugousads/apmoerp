@@ -85,6 +85,12 @@
 
     // Get branch context for filtering sidebar (admin branch toggle)
     $adminBranchContext = session('admin_branch_context');
+
+    // UI mode flags
+    $simpleMode = (bool) config('erp_ui.simple_mode', true);
+    $hideCodeEditors = (bool) config('erp_ui.hide_code_editors', true);
+    $hideAdvancedSettings = (bool) config('erp_ui.hide_advanced_settings', true);
+
     $branchModuleKeys = [];
     
     if ($adminBranchContext) {
@@ -129,6 +135,14 @@
         'documents' => 'documents',
         'helpdesk' => 'helpdesk',
         'spares' => 'spares',
+
+        // Core/Shared modules
+        'reports' => 'reports',
+        'settings' => 'settings',
+
+        // Store integrations (permission set uses both "store.*" and "stores.*")
+        'store' => 'store_integration',
+        'stores' => 'store_integration',
     ];
     
     // Helper to check if a menu item's module is enabled for the current branch context
@@ -196,8 +210,8 @@
                         ['route' => 'admin.reports.inventory', 'label' => __('Inventory'), 'permission' => 'inventory.view-reports'],
                         ['route' => 'admin.reports.pos', 'label' => __('POS'), 'permission' => 'pos.view-reports'],
                         ['route' => 'admin.reports.aggregate', 'label' => __('Aggregate'), 'permission' => 'reports.aggregate'],
-                        ['route' => 'admin.reports.scheduled', 'label' => __('Scheduled'), 'permission' => 'reports.schedule'],
-                        ['route' => 'admin.reports.templates', 'label' => __('Templates'), 'permission' => 'reports.templates'],
+                        ['route' => 'admin.reports.scheduled', 'label' => __('Scheduled'), 'permission' => 'reports.schedule', 'visible' => ! $simpleMode],
+                        ['route' => 'admin.reports.templates', 'label' => __('Templates'), 'permission' => 'reports.templates', 'visible' => ! $hideCodeEditors],
                     ],
                 ],
             ],
@@ -563,7 +577,7 @@
                     'children' => [
                         ['route' => 'admin.modules.index', 'label' => __('All Modules'), 'permission' => 'modules.manage'],
                         ['route' => 'admin.modules.create', 'label' => __('Add Module'), 'permission' => 'modules.manage'],
-                        ['route' => 'admin.modules.product-fields', 'label' => __('Product Fields'), 'permission' => 'modules.manage'],
+                        ['route' => 'admin.modules.product-fields', 'label' => __('Product Fields'), 'permission' => 'modules.manage', 'visible' => ! $simpleMode],
                     ],
                 ],
                 [
@@ -627,6 +641,11 @@
     // IMPORTANT: Show parent menu if user can access parent OR any of its children
     $filteredSections = collect($menuSections)->map(function ($section) use ($canAccess, $routeExists, $isModuleEnabled, $branchModuleKeys) {
         $items = collect($section['items'] ?? [])->map(function ($item) use ($canAccess, $routeExists, $isModuleEnabled, $branchModuleKeys) {
+            // Optional visibility flag (used for Simple Mode)
+            if (array_key_exists('visible', $item) && $item['visible'] === false) {
+                return null;
+            }
+
             // Check if item has a moduleKey - if so, filter by that specific module
             $moduleKey = $item['moduleKey'] ?? null;
             if ($moduleKey && !empty($branchModuleKeys) && !in_array($moduleKey, $branchModuleKeys)) {
@@ -640,6 +659,10 @@
             
             // Filter children to only those the user can access and module is enabled
             $children = collect($item['children'] ?? [])->filter(function ($child) use ($canAccess, $routeExists, $isModuleEnabled) {
+                if (array_key_exists('visible', $child) && $child['visible'] === false) {
+                    return false;
+                }
+
                 $childPermission = $child['permission'] ?? null;
                 return $canAccess($childPermission) 
                     && $routeExists($child['route'] ?? null)

@@ -54,7 +54,7 @@ trait LoadsDashboardData
             abort(403);
         }
 
-        $this->branchId = session('admin_branch_context', $user->branch_id);
+        $this->branchId = current_branch_id();
         // Use case-insensitive role check - seeder uses "Super Admin" (Title Case)
         $this->isAdmin = $user->hasAnyRole(['Super Admin', 'super-admin', 'Admin', 'admin']);
         $this->cacheTtl = (int) (\App\Models\SystemSetting::where('setting_key', 'advanced.cache_ttl')->value('value') ?? 300);
@@ -65,7 +65,15 @@ trait LoadsDashboardData
      */
     protected function getCachePrefix(): string
     {
-        return "dashboard:branch_{$this->branchId}:admin_{$this->isAdmin}";
+        // Include optional period (if the consuming component supports it) to avoid
+        // stale chart caches when users switch between different dashboard periods.
+        $period = 'default';
+        if (property_exists($this, 'selectedPeriod')) {
+            $value = (string) ($this->selectedPeriod ?? 'default');
+            $period = in_array($value, ['today', 'week', 'month'], true) ? $value : 'default';
+        }
+
+        return "dashboard:branch_".($this->branchId ?? 'all').":admin_{$this->isAdmin}:period_{$period}";
     }
 
     /**
@@ -73,7 +81,8 @@ trait LoadsDashboardData
      */
     protected function scopeQueryToBranch($query)
     {
-        if (! $this->isAdmin && $this->branchId) {
+        // If a branch context is active, always scope to it (including for admins).
+        if ($this->branchId) {
             return $query->where('branch_id', $this->branchId);
         }
 

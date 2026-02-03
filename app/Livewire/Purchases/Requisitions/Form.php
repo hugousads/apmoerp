@@ -8,11 +8,11 @@ use App\Models\Product;
 use App\Models\PurchaseRequisition;
 use App\Models\PurchaseRequisitionItem;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class Form extends Component
 {
     use \App\Http\Requests\Traits\HasMultilingualValidation;
@@ -42,7 +42,11 @@ class Form extends Component
 
     public function getRules(): array
     {
-        $branchId = auth()->user()?->branch_id;
+        // Resolve the effective branch for validation.
+        // - Editing: use the existing requisition branch
+        // - Creating: use the current branch context
+        $branchId = (int) ($this->requisition?->branch_id ?? current_branch_id() ?? 0);
+        $branchId = $branchId > 0 ? $branchId : null;
 
         return [
             'subject' => $this->multilingualString(required: true, max: 255),
@@ -117,7 +121,16 @@ class Form extends Component
 
     protected function loadProducts(): void
     {
-        $this->products = Product::where('branch_id', auth()->user()->branch_id)
+        $branchId = (int) ($this->requisition?->branch_id ?? current_branch_id() ?? 0);
+
+        if ($branchId <= 0) {
+            $this->products = [];
+
+            return;
+        }
+
+        $this->products = Product::query()
+            ->where('branch_id', $branchId)
             ->where('status', 'active')
             ->select('id', 'name', 'sku', 'default_price')
             ->get()
@@ -152,11 +165,16 @@ class Form extends Component
         }
     }
 
-    public function save(): RedirectResponse
+    public function save(): void
     {
         $this->validate($this->getRules());
 
-        $branchId = auth()->user()->branch_id;
+        $branchId = (int) ($this->requisition?->branch_id ?? current_branch_id() ?? 0);
+
+        if ($branchId <= 0) {
+            $this->addError('branch_id', __('Please select a branch first.'));
+            return;
+        }
         // V33-CRIT-02 FIX: Use actual_user_id() for proper audit attribution during impersonation
         $userId = actual_user_id();
 
@@ -203,11 +221,16 @@ class Form extends Component
         $this->redirectRoute('app.purchases.requisitions.index', navigate: true);
     }
 
-    public function submit(): RedirectResponse
+    public function submit(): void
     {
         $this->validate($this->getRules());
 
-        $branchId = auth()->user()->branch_id;
+        $branchId = (int) ($this->requisition?->branch_id ?? current_branch_id() ?? 0);
+
+        if ($branchId <= 0) {
+            $this->addError('branch_id', __('Please select a branch first.'));
+            return;
+        }
         // V33-CRIT-02 FIX: Use actual_user_id() for proper audit attribution during impersonation
         $userId = actual_user_id();
 
@@ -254,7 +277,6 @@ class Form extends Component
         $this->redirectRoute('app.purchases.requisitions.index', navigate: true);
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
         return view('livewire.purchases.requisitions.form');

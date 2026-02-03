@@ -10,6 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -125,7 +126,8 @@ class StoreOrdersExportController extends Controller
             // Set headers
             $col = 1;
             foreach ($columns as $header) {
-                $sheet->setCellValueByColumnAndRow($col, 1, $header);
+                $cell = Coordinate::stringFromColumnIndex($col) . '1';
+                $sheet->setCellValue($cell, $header);
                 $col++;
             }
 
@@ -135,18 +137,19 @@ class StoreOrdersExportController extends Controller
                 $col = 1;
                 foreach ($columns as $column) {
                     $value = $row[$column] ?? '';
-                    $sheet->setCellValueByColumnAndRow($col, $rowNum, is_scalar($value) ? $value : json_encode($value));
+                    $cell = Coordinate::stringFromColumnIndex($col) . $rowNum;
+                    $sheet->setCellValue($cell, is_scalar($value) ? $value : json_encode($value));
                     $col++;
                 }
                 $rowNum++;
             }
 
             // Auto-size columns
-            foreach (range(1, count($columns)) as $col) {
-                $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+            foreach (range(1, count($columns)) as $colIndex) {
+                $colLetter = Coordinate::stringFromColumnIndex($colIndex);
+                $sheet->getColumnDimension($colLetter)->setAutoSize(true);
             }
-
-            // Style header row
+// Style header row
             $headerStyle = $sheet->getStyle('1:1');
             $headerStyle->getFont()->setBold(true);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)

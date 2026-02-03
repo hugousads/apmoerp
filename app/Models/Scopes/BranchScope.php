@@ -85,6 +85,17 @@ class BranchScope implements Scope
             return;
         }
 
+        // Prefer an explicit per-request branch context if available (SetUserBranchContext middleware)
+        // This enables "view branch perspective" for Super Admin / view-all users.
+        $requestBranchId = $this->resolveRequestBranchId();
+
+        if ($requestBranchId !== null) {
+            $table = $model->getTable();
+            $builder->where("{$table}.branch_id", $requestBranchId);
+
+            return;
+        }
+
         // Get current user safely through BranchContextManager
         $user = BranchContextManager::getCurrentUser();
 
@@ -143,6 +154,40 @@ class BranchScope implements Scope
             $builder->whereNull("{$table}.id")->whereNotNull("{$table}.id");
         }
     }
+    /**
+     * Resolve an explicit branch id from the current HTTP request context.
+     *
+     * This is set by SetUserBranchContext middleware (request attribute + container binding).
+     * When present, it should take priority over role-based bypass rules so that
+     * privileged users (Super Admin / branches.view-all) can "view as branch".
+     */
+    protected function resolveRequestBranchId(): ?int
+    {
+        $branchId = null;
+
+        try {
+            $request = request();
+            if ($request && $request->attributes->has('branch_id')) {
+                $branchId = $request->attributes->get('branch_id');
+            }
+        } catch (\Throwable $e) {
+            // Ignore: no request bound (CLI / queue / tests)
+        }
+
+        if ($branchId === null && app()->bound('req.branch_id')) {
+            $branchId = app('req.branch_id');
+        }
+
+        if ($branchId === null) {
+            return null;
+        }
+
+        $branchId = (int) $branchId;
+
+        return $branchId > 0 ? $branchId : null;
+    }
+
+
 
     /**
      * Check if the model should be excluded from branch scoping.
@@ -156,6 +201,9 @@ class BranchScope implements Scope
             \App\Models\User::class,
             \App\Models\Branch::class,
             \App\Models\BranchAdmin::class,
+            // Dashboard widgets are a global catalog (branch-specific layouts are stored elsewhere)
+            // Keeping them unscoped prevents "empty catalog" issues when branch_id is nullable.
+            \App\Models\DashboardWidget::class,
             \App\Models\Module::class,
             \App\Models\Permission::class,
             \App\Models\Role::class,

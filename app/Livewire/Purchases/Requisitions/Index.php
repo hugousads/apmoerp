@@ -11,6 +11,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.app')]
 class Index extends Component
 {
     use AuthorizesRequests;
@@ -29,6 +30,17 @@ class Index extends Component
 
     public string $sortDirection = 'desc';
 
+    /**
+     * Hard allow-list of sortable fields to avoid SQL injection.
+     */
+    protected array $allowedSortFields = [
+        'created_at',
+        'requisition_code',
+        'subject',
+        'priority',
+        'status',
+    ];
+
     public function mount(): void
     {
         $this->authorize('purchases.requisitions.view');
@@ -41,6 +53,10 @@ class Index extends Component
 
     public function sortBy(string $field): void
     {
+        if (! in_array($field, $this->allowedSortFields, true)) {
+            return;
+        }
+
         if ($this->sortField === $field) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
@@ -51,9 +67,8 @@ class Index extends Component
 
     public function getStatistics(): array
     {
-        $branchId = auth()->user()->branch_id;
-
-        $stats = PurchaseRequisition::where('branch_id', $branchId)
+        // PurchaseRequisition is branch-scoped. Do not manually force the user's branch.
+        $stats = PurchaseRequisition::query()
             ->selectRaw('
                 COUNT(*) as total_requisitions,
                 COUNT(CASE WHEN status = ? THEN 1 END) as pending_approval,
@@ -110,13 +125,10 @@ class Index extends Component
         ]);
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
-        $branchId = auth()->user()->branch_id;
-
-        $query = PurchaseRequisition::with(['employee', 'department', 'items'])
-            ->where('branch_id', $branchId);
+        $query = PurchaseRequisition::query()
+            ->with(['employee', 'department', 'items']);
 
         if ($this->search) {
             $query->where(function ($q) {
@@ -136,6 +148,9 @@ class Index extends Component
             $query->where('priority', $this->priority);
         }
 
+        if (! in_array($this->sortField, $this->allowedSortFields, true)) {
+            $this->sortField = 'created_at';
+        }
         $query->orderBy($this->sortField, $this->sortDirection);
 
         $requisitions = $query->paginate(15);

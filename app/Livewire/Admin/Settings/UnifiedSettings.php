@@ -206,6 +206,27 @@ class UnifiedSettings extends Component
             abort(403);
         }
 
+        // Simple UI mode: hide advanced/power-user tabs to keep settings user-friendly
+        $simpleMode = (bool) config('erp_ui.simple_mode', true);
+        $hideAdvanced = (bool) config('erp_ui.hide_advanced_settings', true);
+        $hideCodeEditors = (bool) config('erp_ui.hide_code_editors', true);
+
+        $tabsToHide = [];
+
+        if ($simpleMode || $hideAdvanced) {
+            $tabsToHide = array_merge($tabsToHide, ['manufacturing', 'fixed_assets', 'integrations', 'backup', 'advanced']);
+        }
+
+        if ($hideCodeEditors) {
+            // Anything that behaves like a template/code editor can be treated as advanced
+            $tabsToHide = array_merge($tabsToHide, ['developer']);
+        }
+
+        foreach (array_unique($tabsToHide) as $tabKey) {
+            unset($this->tabs[$tabKey], $this->tabIcons[$tabKey], $this->tabDescriptions[$tabKey]);
+        }
+
+
         // Get tab from query string (supports both ?tab= and hash via JS)
         $this->activeTab = request()->query('tab', 'general');
 

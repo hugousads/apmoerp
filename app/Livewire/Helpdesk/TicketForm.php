@@ -11,6 +11,7 @@ use App\Models\TicketPriority;
 use App\Models\TicketSLAPolicy;
 use App\Models\User;
 use App\Rules\BranchScopedExists;
+use App\Services\BranchContextManager;
 use App\Services\HelpdeskService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -122,16 +123,21 @@ class TicketForm extends Component
         ];
 
         $user = auth()->user();
-        $branchId = $this->ticket?->branch_id ?? $user?->branch_id;
-        $isSuperAdmin = $user?->hasAnyRole(['Super Admin', 'super-admin']);
+        $branchId = (int) ($this->ticket?->branch_id ?? current_branch_id() ?? 0);
+        $canViewAllBranches = $user ? BranchContextManager::canViewAllBranches($user) : false;
 
-        if (! $branchId && ! $isSuperAdmin) {
-            session()->flash('error', __('You must be assigned to a branch to manage tickets.'));
+        // Tickets are strictly branch-scoped (branch_id is required).
+        if ($branchId <= 0) {
+            session()->flash('error', $canViewAllBranches
+                ? __('Please select a branch before creating a ticket.')
+                : __('You must be assigned to a branch to manage tickets.')
+            );
 
             return $this->redirectRoute('app.helpdesk.tickets.index', navigate: true);
         }
 
-        if ($this->ticket && $branchId && $this->ticket->branch_id !== $branchId && ! $isSuperAdmin) {
+        // Extra defensive check (for non-admins) in case a ticket was loaded outside context.
+        if ($this->ticket && ! $canViewAllBranches && $this->ticket->branch_id !== $branchId) {
             session()->flash('error', __('You cannot modify tickets from other branches.'));
 
             return $this->redirectRoute('app.helpdesk.tickets.index', navigate: true);
@@ -151,7 +157,7 @@ class TicketForm extends Component
                 'category_id' => 'required|exists:ticket_categories,id',
                 'priority_id' => 'required|exists:ticket_priorities,id',
                 // V57-CRITICAL-03 FIX: Use BranchScopedExists to prevent cross-branch customer references
-                'customer_id' => ['nullable', new BranchScopedExists('customers', 'id', null, true)],
+                'customer_id' => ['nullable', new BranchScopedExists('customers', 'id', $branchId, true)],
                 'assigned_to' => 'nullable|exists:users,id',
                 'sla_policy_id' => 'nullable|exists:ticket_sla_policies,id',
                 'tags' => 'array',
@@ -171,7 +177,7 @@ class TicketForm extends Component
                 'category_id' => 'required|exists:ticket_categories,id',
                 'priority_id' => 'required|exists:ticket_priorities,id',
                 // V57-CRITICAL-03 FIX: Use BranchScopedExists to prevent cross-branch customer references
-                'customer_id' => ['nullable', new BranchScopedExists('customers', 'id', null, true)],
+                'customer_id' => ['nullable', new BranchScopedExists('customers', 'id', $branchId, true)],
                 'assigned_to' => 'nullable|exists:users,id',
                 'sla_policy_id' => 'nullable|exists:ticket_sla_policies,id',
                 'tags' => 'array',
@@ -185,17 +191,16 @@ class TicketForm extends Component
             session()->flash('success', __('Ticket created successfully'));
         }
 
-        $this->redirectRoute('app.helpdesk.tickets.show', ['ticket' => $this->ticket->id], navigate: true);
+        return $this->redirectRoute('app.helpdesk.tickets.show', ['ticket' => $this->ticket->id], navigate: true);
     }
 
     public function render()
     {
         $user = auth()->user();
-        $branchId = $user?->branch_id;
-        $isSuperAdmin = $user?->hasAnyRole(['Super Admin', 'super-admin']);
+        $branchId = (int) ($this->ticket?->branch_id ?? current_branch_id() ?? 0);
 
         $customers = Customer::query()
-            ->when(! $isSuperAdmin && $branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId > 0, fn ($q) => $q->where('branch_id', $branchId), fn ($q) => $q->whereRaw('1=0'))
             ->orderBy('name')
             ->get();
         $categories = TicketCategory::active()->ordered()->get();
@@ -207,7 +212,12 @@ class TicketForm extends Component
                 ->orWhere('name', 'Super Admin')
                 ->orWhere('name', 'super-admin');
         })
-            ->when(! $isSuperAdmin && $branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId > 0, function ($q) use ($branchId) {
+                $q->whereHas('branches', function ($b) use ($branchId) {
+                    $b->where('branches.id', $branchId)
+                        ->wherePivot('is_active', true);
+                });
+            }, fn ($q) => $q->whereRaw('1=0'))
             ->where('is_active', true)
             ->get();
 

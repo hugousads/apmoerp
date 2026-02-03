@@ -7,9 +7,9 @@ namespace App\Livewire\Documents;
 use App\Http\Requests\Traits\HasMultilingualValidation;
 use App\Models\Document;
 use App\Models\DocumentTag;
+use App\Services\BranchContextManager;
 use App\Services\DocumentService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -57,8 +57,11 @@ class Form extends Component
 
             // Prevent cross-branch document access (IDOR protection)
             $user = auth()->user();
-            if ($user && $user->branch_id && $document->branch_id && $user->branch_id !== $document->branch_id) {
-                abort(403, 'You cannot access documents from other branches.');
+            if ($user && $document->branch_id) {
+                // Respect view-all permission (admins can manage documents across branches).
+                if (! BranchContextManager::canViewAllBranches($user) && $user->branch_id && $user->branch_id !== $document->branch_id) {
+                    abort(403, 'You cannot access documents from other branches.');
+                }
             }
 
             $this->isEdit = true;
@@ -76,10 +79,17 @@ class Form extends Component
         }
     }
 
-    public function save(): RedirectResponse
+    public function save(): void
     {
         // V58-HIGH-01 FIX: Re-authorize on mutation to prevent direct method calls
         $this->authorize($this->isEdit ? 'documents.edit' : 'documents.create');
+
+        // Documents are strictly branch-scoped (branch_id is required).
+        if (! $this->isEdit && ! current_branch_id()) {
+            $this->addError('branch_id', __('Please select a branch before uploading a document.'));
+
+            return;
+        }
 
         if ($this->isEdit) {
             $this->validate([

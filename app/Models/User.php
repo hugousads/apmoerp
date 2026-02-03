@@ -85,7 +85,9 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
 
     public function branches(): BelongsToMany
     {
-        return $this->belongsToMany(Branch::class, 'branch_user');
+        return $this->belongsToMany(Branch::class, 'branch_user')
+            ->withPivot(['is_active', 'activated_at'])
+            ->withTimestamps();
     }
 
     public function sales(): HasMany
@@ -248,11 +250,19 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
      */
     public function getCurrentBranch(): ?Branch
     {
-        // Check session for admin branch context first
-        $contextBranchId = session('admin_branch_context');
+        // Check session for admin branch context first.
+        // 0 means: "All Branches" (no specific branch).
+        $contextBranchId = (int) session('admin_branch_context', 0);
 
-        if ($contextBranchId && $this->hasRole('Super Admin')) {
-            return Branch::find($contextBranchId);
+        if (($this->hasRole('Super Admin') || $this->can('branches.view-all'))) {
+            if ($contextBranchId > 0) {
+                return Branch::find($contextBranchId);
+            }
+
+            // All branches
+            if ($contextBranchId === 0) {
+                return null;
+            }
         }
 
         return $this->branch;

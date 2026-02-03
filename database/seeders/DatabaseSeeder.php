@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             BranchSeeder::class,         // Branches must exist before modules link to them
             ModulesSeeder::class,         // This now also links core modules to branches
             UsersSeeder::class,
+            BranchAdminsSeeder::class,
+            DashboardWidgetsSeeder::class,
             CurrenciesSeeder::class,
             TaxesSeeder::class,
             UnitsOfMeasureSeeder::class,

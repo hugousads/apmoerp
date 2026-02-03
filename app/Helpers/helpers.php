@@ -36,6 +36,25 @@ if (! function_exists('current_branch_id')) {
     }
 }
 
+if (! function_exists('branch_context_cache_key')) {
+    /**
+     * Build a stable cache key segment for the current branch context.
+     *
+     * - Returns "all" when context is "All Branches" (null/0)
+     * - Returns the numeric branch id as string for a specific branch
+     */
+    function branch_context_cache_key(?int $branchId = null): string
+    {
+        $branchId = $branchId ?? current_branch_id();
+
+        if ($branchId === null || (int) $branchId === 0) {
+            return 'all';
+        }
+
+        return (string) ((int) $branchId);
+    }
+}
+
 if (! function_exists('is_impersonating')) {
     /**
      * Check if the current request is being performed during an impersonation session.

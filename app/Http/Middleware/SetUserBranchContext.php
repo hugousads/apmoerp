@@ -13,15 +13,15 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * SetUserBranchContext
  *
- * Sets the branch context based on the authenticated user's branch_id.
- * This ensures that models using HasBranch trait automatically scope
- * queries to the user's branch, preventing cross-branch data leakage.
+ * Sets the branch context based on the authenticated user's branch_id OR
+ * an admin-selected session context (BranchSwitcher).
  *
- * V56-CRITICAL-02 FIX: Now respects session('admin_branch_context') for users
- * with branch switching permission (Super Admin or branches.view-all), ensuring
- * consistency between BranchSwitcher UI and query/write operations.
+ * - Normal users: scoped to their own branch.
+ * - Super Admin / branches.view-all users: can scope to a specific branch (session value),
+ *   or choose "All Branches" (session value 0) which disables branch scoping.
  *
- * Usage: Add to web middleware group or apply to specific routes
+ * This ensures models using HasBranch trait automatically scope queries to the
+ * current context, preventing cross-branch data leakage and keeping UI + backend consistent.
  */
 class SetUserBranchContext
 {
@@ -33,21 +33,20 @@ class SetUserBranchContext
             return $next($request);
         }
 
-        // V56-CRITICAL-02 FIX: Check if user can switch branches and has an active branch context in session
         $branchId = $this->resolveBranchId($user);
 
+        // When branchId is null, it means "All Branches" (no scoping) for privileged users.
         if ($branchId) {
-            // Set branch context in request attributes
+            // Store on request attributes
             $request->attributes->set('branch_id', $branchId);
 
-            // Also store in service container for easy access in services
+            // Store in container (used by helpers/services)
             app()->instance('req.branch_id', $branchId);
 
-            // V56-CRITICAL-02 FIX: Set explicit branch context for BranchContextManager
-            // This ensures getCurrentBranchId() returns the correct branch for record creation
+            // Ensure BranchContextManager knows the explicit context for this request (write operations)
             BranchContextManager::setBranchContext($branchId);
 
-            // Store branch model in container if available
+            // Store branch model in request attributes if available
             $branch = $this->resolveBranch($user, $branchId);
             if ($branch) {
                 $request->attributes->set('branch', $branch);
@@ -59,33 +58,44 @@ class SetUserBranchContext
 
     /**
      * Resolve the effective branch ID for the current request.
-     * V56-CRITICAL-02 FIX: Respects admin branch context from session when user can switch branches.
+     *
+     * Returns:
+     * - int branch id: scope the request to that branch
+     * - null: "All Branches" (no scope) for privileged users
      */
     private function resolveBranchId(object $user): ?int
     {
-        // Check if user can switch branches (Super Admin or branches.view-all permission)
         $canSwitchBranches = $this->canSwitchBranches($user);
 
         if ($canSwitchBranches) {
-            // V56-CRITICAL-02 FIX: Check session for admin_branch_context set by BranchSwitcher
-            $sessionBranchId = session('admin_branch_context');
-
-            if ($sessionBranchId !== null) {
-                // Validate the session branch ID is valid and active
-                $branchExists = Branch::where('id', $sessionBranchId)
-                    ->where('is_active', true)
-                    ->exists();
-
-                if ($branchExists) {
-                    return (int) $sessionBranchId;
-                }
-
-                // Invalid session branch - clear it and fall back to user's branch
-                session()->forget('admin_branch_context');
+            // Keep a consistent session key for switchable users.
+            // 0 is the sentinel for "All Branches".
+            if (! session()->exists('admin_branch_context')) {
+                session(['admin_branch_context' => (int) ($user->branch_id ?? 0)]);
             }
+
+            $sessionBranchId = (int) session('admin_branch_context', 0);
+
+            // 0 => All Branches (no branch context)
+            if ($sessionBranchId === 0) {
+                return null;
+            }
+
+            // Validate the session branch ID is valid and active
+            $branchExists = Branch::query()
+                ->where('id', $sessionBranchId)
+                ->where('is_active', true)
+                ->exists();
+
+            if ($branchExists) {
+                return $sessionBranchId;
+            }
+
+            // Invalid session branch - reset to user's branch (or 0 if none)
+            session(['admin_branch_context' => (int) ($user->branch_id ?? 0)]);
         }
 
-        // Fall back to user's primary branch_id
+        // Fallback: user's primary branch
         if (isset($user->branch_id) && $user->branch_id) {
             return (int) $user->branch_id;
         }
@@ -98,14 +108,20 @@ class SetUserBranchContext
      */
     private function canSwitchBranches(object $user): bool
     {
-        // Check for Super Admin role
         if (method_exists($user, 'hasRole') && $user->hasRole('Super Admin')) {
             return true;
         }
 
-        // Check for branches.view-all permission
-        if (method_exists($user, 'can') && $user->can('branches.view-all')) {
-            return true;
+        if (method_exists($user, 'can')) {
+            // Prefer canonical permission...
+            if ($user->can('branches.view-all')) {
+                return true;
+            }
+
+            // Legacy alias used in some deployments.
+            if ($user->can('access-all-branches')) {
+                return true;
+            }
         }
 
         return false;
@@ -117,16 +133,16 @@ class SetUserBranchContext
     private function resolveBranch(object $user, int $branchId): ?Branch
     {
         // If the resolved branch is user's own branch and it's loaded, use it
-        if (isset($user->branch_id) && $user->branch_id === $branchId) {
+        if (isset($user->branch_id) && (int) $user->branch_id === (int) $branchId) {
             if ($user->relationLoaded('branch')) {
                 return $user->branch;
             }
+
             if (method_exists($user, 'branch')) {
                 return $user->branch()->first();
             }
         }
 
-        // Otherwise fetch the branch by ID
         return Branch::find($branchId);
     }
 }

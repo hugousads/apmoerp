@@ -37,6 +37,12 @@ class CustomizableDashboard extends Component
 
     public string $layoutMode = 'default'; // default, compact, expanded
 
+    /**
+     * Period selector used by the dashboard filters.
+     * Supported: today, week, month
+     */
+    public string $selectedPeriod = 'week';
+
     // Data
     public array $stats = [];
 
@@ -58,6 +64,8 @@ class CustomizableDashboard extends Component
 
     // UI state
     public bool $isEditing = false;
+
+    public bool $isLoading = false;
 
     /**
      * Available widgets configuration
@@ -207,6 +215,50 @@ class CustomizableDashboard extends Component
     }
 
     /**
+     * Override the shared chart builder to respect the dashboard period selector.
+     */
+    protected function buildSalesChartData(): array
+    {
+        $days = match ($this->selectedPeriod) {
+            'today' => 1,
+            'month' => 30,
+            default => 7,
+        };
+
+        $start = now()->subDays(max($days - 1, 0))->startOfDay();
+
+        $totalsByDate = $this->scopeQueryToBranch(\App\Models\Sale::query())
+            ->whereNotIn('status', SaleStatus::nonRevenueStatuses())
+            ->whereDate('sale_date', '>=', $start)
+            ->selectRaw('DATE(sale_date) as date, SUM(grand_total) as total')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->pluck('total', 'date')
+            ->map(fn ($v) => (float) $v)
+            ->toArray();
+
+        $labels = [];
+        $values = [];
+
+        // Build a continuous range (even if there were no sales on some days)
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $key = $date->format('Y-m-d');
+
+            $labels[] = $days === 1
+                ? __('Today')
+                : $date->format('M d');
+
+            $values[] = $totalsByDate[$key] ?? 0.0;
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values,
+        ];
+    }
+
+    /**
      * Load statistics for module-specific widgets
      */
     protected function loadModuleStats(): void
@@ -350,6 +402,10 @@ class CustomizableDashboard extends Component
         $this->widgetOrder = $preferences['dashboard_widget_order'] ?? array_keys($this->availableWidgets);
         $this->hiddenWidgets = $preferences['dashboard_hidden_widgets'] ?? [];
         $this->layoutMode = $preferences['dashboard_layout_mode'] ?? 'default';
+        $period = $preferences['dashboard_period'] ?? $this->selectedPeriod;
+        if (in_array($period, ['today', 'week', 'month'], true)) {
+            $this->selectedPeriod = $period;
+        }
 
         // Build widgets array with visibility
         $this->widgets = [];
@@ -400,6 +456,9 @@ class CustomizableDashboard extends Component
     public function toggleEditMode(): void
     {
         $this->isEditing = ! $this->isEditing;
+
+        // Let the frontend enable/disable SortableJS without needing a full reinit.
+        $this->dispatch('dashboard-edit-mode', editing: $this->isEditing);
     }
 
     /**
@@ -435,7 +494,41 @@ class CustomizableDashboard extends Component
         if (in_array($mode, ['default', 'compact', 'expanded'])) {
             $this->layoutMode = $mode;
             $this->saveUserPreferences();
+
+            $this->dispatch('dashboard-layout-mode', mode: $this->layoutMode);
         }
+    }
+
+    /**
+     * React to period filter changes.
+     *
+     * Important: Charts use JS (Chart.js) and are marked as wire:ignore, so we
+     * must explicitly push updated datasets to the frontend.
+     */
+    public function updatedSelectedPeriod(): void
+    {
+        if (! in_array($this->selectedPeriod, ['today', 'week', 'month'], true)) {
+            $this->selectedPeriod = 'week';
+        }
+
+        $this->isLoading = true;
+
+        // Persist selection for this user and refresh cached data
+        $this->saveUserPreferences();
+        $this->refreshDashboardData();
+
+        // Reload recent activities if user has permission
+        $user = Auth::user();
+        if ($user && $user->can('logs.audit.view')) {
+            $this->loadRecentActivities();
+        }
+
+        $this->isLoading = false;
+
+        $this->dispatch('dashboard-charts-update',
+            sales: $this->salesChartData,
+            inventory: $this->inventoryChartData,
+        );
     }
 
     /**
@@ -461,6 +554,7 @@ class CustomizableDashboard extends Component
         $preferences['dashboard_widget_order'] = $this->widgetOrder;
         $preferences['dashboard_hidden_widgets'] = $this->hiddenWidgets;
         $preferences['dashboard_layout_mode'] = $this->layoutMode;
+        $preferences['dashboard_period'] = $this->selectedPeriod;
 
         $user->preferences = $preferences;
         $user->save();
@@ -471,6 +565,7 @@ class CustomizableDashboard extends Component
      */
     public function refreshData(): void
     {
+        $this->isLoading = true;
         $this->refreshDashboardData();
 
         // Also reload recent activities if user has permission
@@ -478,6 +573,13 @@ class CustomizableDashboard extends Component
         if ($user && $user->can('logs.audit.view')) {
             $this->loadRecentActivities();
         }
+
+        $this->isLoading = false;
+
+        $this->dispatch('dashboard-charts-update',
+            sales: $this->salesChartData,
+            inventory: $this->inventoryChartData,
+        );
     }
 
     public function render(): View

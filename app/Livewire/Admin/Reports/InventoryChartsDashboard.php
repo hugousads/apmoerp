@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin\Reports;
 
+use App\Models\Branch;
 use App\Models\Product;
 use App\Services\StockService;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +15,37 @@ class InventoryChartsDashboard extends Component
 {
     public ?int $branchId = null;
 
-    #[Layout('layouts.app')]
+    public ?string $branchLabel = null;
+
+    
+    protected function syncBranchContext(): void
+    {
+        // Follow the global branch context (selected from the sidebar switcher).
+        $this->branchId = current_branch_id();
+
+        if ($this->branchId) {
+            $branch = Branch::query()->find($this->branchId);
+
+            $this->branchLabel = $branch
+                ? ((app()->getLocale() === 'ar' && ! empty($branch->name_ar)) ? $branch->name_ar : $branch->name)
+                : ('#'.$this->branchId);
+        } else {
+            $this->branchLabel = null; // All branches
+        }
+    }
+
+    public function mount(): void
+    {
+        $user = Auth::user();
+
+        if (! $user || ! $user->can('reports.inventory.charts')) {
+            abort(403);
+        }
+
+        $this->syncBranchContext();
+    }
+
+#[Layout('layouts.app')]
     public function render()
     {
         $user = Auth::user();
@@ -60,6 +91,7 @@ class InventoryChartsDashboard extends Component
         return view('livewire.admin.reports.inventory-charts-dashboard', [
             'totalProducts' => $totalProducts,
             'totalStock' => $totalStock,
+            'branchLabel' => $this->branchLabel,
         ]);
     }
 }

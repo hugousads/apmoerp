@@ -341,7 +341,9 @@ class Reconciliation extends Component
 
     public function render()
     {
-        $accounts = BankAccount::where('branch_id', auth()->user()->branch_id)
+        // BankAccount is branch-scoped. Do not manually force the user's branch.
+        // This ensures reconciliation respects the current branch context.
+        $accounts = BankAccount::query()
             ->orderBy('account_name')
             ->get();
 

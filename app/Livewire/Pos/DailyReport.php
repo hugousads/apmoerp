@@ -19,6 +19,12 @@ class DailyReport extends Component
 
     public ?int $branchId = null;
 
+    /**
+     * Global branch context selected from the sidebar switcher.
+     * If set, this report is locked to that branch for a simpler UX.
+     */
+    public ?int $branchContextId = null;
+
     public string $date = '';
 
     public array $summary = [];
@@ -35,9 +41,13 @@ class DailyReport extends Component
         $this->authorize('pos.daily-report.view');
         $this->date = now()->format('Y-m-d');
 
+        $this->branchContextId = current_branch_id();
+
         $user = auth()->user();
         $isSuperAdmin = $user->hasAnyRole(['Super Admin', 'super-admin']);
-        if (! $isSuperAdmin) {
+        if ($this->branchContextId) {
+            $this->branchId = $this->branchContextId;
+        } elseif (! $isSuperAdmin) {
             $branches = $this->branchAccessService->getUserBranches($user);
             $this->branchId = $branches->first()?->id;
         }
@@ -52,6 +62,12 @@ class DailyReport extends Component
 
     public function updatedBranchId(): void
     {
+        // If branch context is locked from sidebar, don't allow changing it here.
+        if ($this->branchContextId) {
+            $this->branchId = $this->branchContextId;
+            return;
+        }
+
         $this->generateReport();
     }
 

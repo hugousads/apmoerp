@@ -12,6 +12,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.app')]
 class Index extends Component
 {
     use AuthorizesRequests;
@@ -51,10 +52,10 @@ class Index extends Component
 
     public function getStatistics(): array
     {
-        $branchId = auth()->user()->branch_id;
-
         // Optimize with single query using conditional aggregations
-        $stats = FixedAsset::where('branch_id', $branchId)
+        // NOTE: FixedAsset is branch-scoped. We intentionally avoid manual branch filters
+        // so it respects the current branch context.
+        $stats = FixedAsset::query()
             ->selectRaw('
                 COUNT(*) as total_assets,
                 COUNT(CASE WHEN status = ? THEN 1 END) as active_assets,
@@ -71,12 +72,9 @@ class Index extends Component
         ];
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
-        $branchId = auth()->user()->branch_id;
-
-        $query = FixedAsset::where('branch_id', $branchId)
+        $query = FixedAsset::query()
             ->with(['branch', 'supplier', 'assignedTo']);
 
         if ($this->search) {
@@ -100,7 +98,7 @@ class Index extends Component
         $assets = $query->paginate(15);
         $statistics = $this->getStatistics();
 
-        $categories = FixedAsset::where('branch_id', $branchId)
+        $categories = FixedAsset::query()
             ->select('category')
             ->distinct()
             ->pluck('category');

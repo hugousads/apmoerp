@@ -228,10 +228,18 @@ class ExportService
     {
         return $data->map(function ($item) use ($columns, $dateFormat) {
             $row = [];
-            $itemArray = is_object($item) ? (array) $item : $item;
+            // NOTE: (array)$model can produce surprising keys (protected properties, etc.)
+            // We prefer Model::toArray() when available.
+            if (is_object($item) && method_exists($item, 'toArray')) {
+                $itemArray = $item->toArray();
+            } elseif (is_object($item)) {
+                $itemArray = get_object_vars($item);
+            } else {
+                $itemArray = is_array($item) ? $item : (array) $item;
+            }
 
             foreach ($columns as $column) {
-                $value = $itemArray[$column] ?? '';
+                $value = data_get($itemArray, $column, '');
 
                 // Handle different data types safely
                 try {
@@ -461,13 +469,24 @@ class ExportService
      */
     protected function getExportPath(string $filename, string $extension): string
     {
-        $disk = Storage::disk(config('filesystems.default'));
+        // IMPORTANT:
+        // The export pipeline expects an *absolute local filesystem path*.
+        // Using a remote filesystem disk (e.g., s3) will throw "Invalid export path"
+        // because those disks do not support path().
+        $diskName = config('exports.disk', 'local');
+        $disk = Storage::disk($diskName);
 
-        if (! $disk->exists('exports')) {
-            $disk->makeDirectory('exports');
+        if (! method_exists($disk, 'path')) {
+            $diskName = 'local';
+            $disk = Storage::disk('local');
         }
 
-        return $disk->path("exports/{$filename}.{$extension}");
+        $baseDir = trim(config('exports.path', 'exports'), '/');
+        if (! $disk->exists($baseDir)) {
+            $disk->makeDirectory($baseDir);
+        }
+
+        return $disk->path("{$baseDir}/{$filename}.{$extension}");
     }
 
     public function downloadAndCleanup(string $filepath): \Symfony\Component\HttpFoundation\BinaryFileResponse

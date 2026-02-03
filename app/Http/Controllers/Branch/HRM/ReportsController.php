@@ -62,7 +62,7 @@ class ReportsController extends Controller
             $headers = ['Employee', 'Date', 'Check in', 'Check out', 'Status', 'Approved at'];
             $col = 1;
             foreach ($headers as $header) {
-                $sheet->setCellValueByColumnAndRow($col, 1, $header);
+                $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . 1, $header);
                 $col++;
             }
 
@@ -76,12 +76,12 @@ class ReportsController extends Controller
             $rowNum = 2;
             $query->chunk(500, function ($rows) use ($sheet, &$rowNum) {
                 foreach ($rows as $row) {
-                    $sheet->setCellValueByColumnAndRow(1, $rowNum, optional($row->employee)->name ?? '');
-                    $sheet->setCellValueByColumnAndRow(2, $rowNum, $row->date);
-                    $sheet->setCellValueByColumnAndRow(3, $rowNum, $row->check_in);
-                    $sheet->setCellValueByColumnAndRow(4, $rowNum, $row->check_out);
-                    $sheet->setCellValueByColumnAndRow(5, $rowNum, $row->status);
-                    $sheet->setCellValueByColumnAndRow(6, $rowNum, $row->approved_at);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(1) . $rowNum, optional($row->employee)->name ?? '');
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(2) . $rowNum, $row->date);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(3) . $rowNum, $row->check_in);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(4) . $rowNum, $row->check_out);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5) . $rowNum, $row->status);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(6) . $rowNum, $row->approved_at);
                     $rowNum++;
                 }
             });
@@ -141,7 +141,7 @@ class ReportsController extends Controller
             $headers = ['Employee', 'Period', 'Basic', 'Allowances', 'Deductions', 'Net', 'Status', 'Paid at'];
             $col = 1;
             foreach ($headers as $header) {
-                $sheet->setCellValueByColumnAndRow($col, 1, $header);
+                $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . 1, $header);
                 $col++;
             }
 
@@ -155,14 +155,14 @@ class ReportsController extends Controller
             $rowNum = 2;
             $query->chunk(500, function ($rows) use ($sheet, &$rowNum) {
                 foreach ($rows as $row) {
-                    $sheet->setCellValueByColumnAndRow(1, $rowNum, optional($row->employee)->name ?? '');
-                    $sheet->setCellValueByColumnAndRow(2, $rowNum, $row->period);
-                    $sheet->setCellValueByColumnAndRow(3, $rowNum, $row->basic);
-                    $sheet->setCellValueByColumnAndRow(4, $rowNum, $row->allowances);
-                    $sheet->setCellValueByColumnAndRow(5, $rowNum, $row->deductions);
-                    $sheet->setCellValueByColumnAndRow(6, $rowNum, $row->net);
-                    $sheet->setCellValueByColumnAndRow(7, $rowNum, $row->status);
-                    $sheet->setCellValueByColumnAndRow(8, $rowNum, $row->paid_at);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(1) . $rowNum, optional($row->employee)->name ?? '');
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(2) . $rowNum, $row->period);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(3) . $rowNum, $row->basic);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(4) . $rowNum, $row->allowances);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5) . $rowNum, $row->deductions);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(6) . $rowNum, $row->net);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(7) . $rowNum, $row->status);
+                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(8) . $rowNum, $row->paid_at);
                     $rowNum++;
                 }
             });

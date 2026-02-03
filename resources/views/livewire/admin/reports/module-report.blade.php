@@ -14,12 +14,30 @@
             @if($isSuperAdmin)
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Branch') }}</label>
-                    <select wire:model.live="selectedBranchId" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500">
-                        <option value="">{{ __('All Branches') }}</option>
-                        @foreach($branches as $branch)
-                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                        @endforeach
-                    </select>
+	                    @if($branchContextId)
+	                        <div class="w-full px-4 py-2 border border-emerald-200 rounded-xl bg-emerald-50">
+	                            <div class="flex items-center justify-between gap-2">
+	                                <div class="min-w-0">
+	                                    <p class="text-sm font-semibold text-emerald-900 truncate">
+	                                        {{ $branchContextName ?? __('Selected Branch') }}
+	                                    </p>
+	                                    <p class="text-xs text-emerald-700">
+	                                        {{ __('Using global branch context') }}
+	                                    </p>
+	                                </div>
+	                                <span class="text-[11px] text-emerald-700 bg-white/70 border border-emerald-200 rounded-full px-2 py-1">
+	                                    {{ __('Locked') }}
+	                                </span>
+	                            </div>
+	                        </div>
+	                    @else
+	                        <select wire:model.live="selectedBranchId" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500">
+	                            <option value="">{{ __('All Branches') }}</option>
+	                            @foreach($branches as $branch)
+	                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+	                            @endforeach
+	                        </select>
+	                    @endif
                 </div>
             @endif
 

@@ -5,14 +5,24 @@
             <p class="text-sm text-slate-500">{{ __('View daily sales summary and session reports') }}</p>
         </div>
         <div class="flex items-center gap-3">
-            @if($isSuperAdmin)
-            <select wire:model.live="branchId" class="erp-input">
-                <option value="">{{ __('All Branches') }}</option>
-                @foreach($branches as $branch)
-                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                @endforeach
-            </select>
-            @endif
+	            @if($isSuperAdmin)
+	                @if($branchContextId)
+	                    @php
+	                        $lockedBranchName = optional($branches->firstWhere('id', $branchContextId))->name ?? __('Selected Branch');
+	                    @endphp
+	                    <div class="erp-input bg-emerald-50 border-emerald-200 text-emerald-900 flex items-center gap-2">
+	                        <span class="text-xs font-semibold truncate">{{ $lockedBranchName }}</span>
+	                        <span class="ms-auto text-[11px] bg-white/70 border border-emerald-200 rounded-full px-2 py-0.5">{{ __('Locked') }}</span>
+	                    </div>
+	                @else
+	                    <select wire:model.live="branchId" class="erp-input">
+	                        <option value="">{{ __('All Branches') }}</option>
+	                        @foreach($branches as $branch)
+	                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+	                        @endforeach
+	                    </select>
+	                @endif
+	            @endif
             <input type="date" wire:model.live="date" class="erp-input">
         </div>
     </div>

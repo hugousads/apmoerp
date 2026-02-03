@@ -35,18 +35,14 @@ use Livewire\Component;
  *
  * @security-reviewed V40 - SQL expressions validated via DatabaseCompatibilityService
  */
+#[Layout('layouts.app')]
 class SalesAnalytics extends Component
 {
-    #[Layout('layouts.app')]
     public string $dateRange = 'month';
 
     public ?string $dateFrom = null;
 
     public ?string $dateTo = null;
-
-    public ?int $branchId = null;
-
-    public bool $isAdmin = false;
 
     public array $summaryStats = [];
 
@@ -75,10 +71,6 @@ class SalesAnalytics extends Component
         if (! $user || ! $user->can('reports.sales.view')) {
             abort(403);
         }
-
-        $this->branchId = $user->branch_id;
-        // Use case-insensitive role check - seeder uses "Super Admin" (Title Case)
-        $this->isAdmin = $user->hasAnyRole(['Super Admin', 'super-admin', 'Admin', 'admin']);
 
         $this->setDateRange();
         $this->loadAllData();
@@ -152,10 +144,6 @@ class SalesAnalytics extends Component
             ->whereNotIn('status', SaleStatus::nonRevenueStatuses())
             ->whereBetween('sale_date', [$this->dateFrom, $this->dateTo]);
 
-        if (! $this->isAdmin && $this->branchId) {
-            $query->where('branch_id', $this->branchId);
-        }
-
         return $query;
     }
 
@@ -190,10 +178,6 @@ class SalesAnalytics extends Component
                 Carbon::parse($this->dateFrom)->subDays(Carbon::parse($this->dateFrom)->diffInDays(Carbon::parse($this->dateTo)) + 1)->toDateString(),
                 Carbon::parse($this->dateFrom)->subDay()->toDateString(),
             ]);
-
-        if (! $this->isAdmin && $this->branchId) {
-            $prevPeriodQuery->where('branch_id', $this->branchId);
-        }
 
         $prevTotalSales = $prevPeriodQuery->sum('total_amount') ?? 0;
 
@@ -253,10 +237,6 @@ class SalesAnalytics extends Component
             ->whereNotIn('status', SaleStatus::nonRevenueStatuses())
             ->whereBetween('sale_date', [$this->dateFrom, $this->dateTo]);
 
-        if (! $this->isAdmin && $this->branchId) {
-            $query->where('branch_id', $this->branchId);
-        }
-
         $results = $query->groupBy('period')->orderBy('period')->get();
 
         $this->salesTrend = [
@@ -300,10 +280,6 @@ class SalesAnalytics extends Component
             ->whereNotIn('sales.status', SaleStatus::nonRevenueStatuses())
             ->whereBetween('sales.sale_date', [$this->dateFrom, $this->dateTo]);
 
-        if (! $this->isAdmin && $this->branchId) {
-            $query->where('sales.branch_id', $this->branchId);
-        }
-
         $this->topProducts = $query
             ->groupBy('products.id', 'products.name', 'products.sku')
             ->orderByDesc('total_revenue')
@@ -341,10 +317,6 @@ class SalesAnalytics extends Component
             ->whereBetween('sales.sale_date', [$this->dateFrom, $this->dateTo])
             ->whereNotNull('sales.customer_id');
 
-        if (! $this->isAdmin && $this->branchId) {
-            $query->where('sales.branch_id', $this->branchId);
-        }
-
         $this->topCustomers = $query
             ->groupBy('customers.id', 'customers.name', 'customers.email')
             ->orderByDesc('total_spent')
@@ -377,8 +349,9 @@ class SalesAnalytics extends Component
             ->whereNotIn('sales.status', SaleStatus::nonRevenueStatuses())
             ->whereBetween('sales.sale_date', [$this->dateFrom, $this->dateTo]);
 
-        if (! $this->isAdmin && $this->branchId) {
-            $query->where('sales.branch_id', $this->branchId);
+        // DB::table() does not get BranchScope automatically. Respect the current branch context.
+        if ($branchId = current_branch_id()) {
+            $query->where('sales.branch_id', $branchId);
         }
 
         $results = $query->groupBy('sale_payments.payment_method')->get();
@@ -420,10 +393,6 @@ class SalesAnalytics extends Component
             ->whereNotIn('status', SaleStatus::nonRevenueStatuses())
             ->whereBetween('sale_date', [$this->dateFrom, $this->dateTo]);
 
-        if (! $this->isAdmin && $this->branchId) {
-            $query->where('branch_id', $this->branchId);
-        }
-
         $results = $query->groupBy('hour')->orderBy('hour')->get()->keyBy('hour');
 
         $hours = [];
@@ -458,10 +427,6 @@ class SalesAnalytics extends Component
             ->whereNull('sales.deleted_at')
             ->whereNotIn('sales.status', SaleStatus::nonRevenueStatuses())
             ->whereBetween('sales.sale_date', [$this->dateFrom, $this->dateTo]);
-
-        if (! $this->isAdmin && $this->branchId) {
-            $query->where('sales.branch_id', $this->branchId);
-        }
 
         $results = $query
             ->groupBy('product_categories.name')

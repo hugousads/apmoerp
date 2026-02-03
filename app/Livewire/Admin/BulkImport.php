@@ -347,13 +347,21 @@ class BulkImport extends Component
                 return;
             }
 
+            $branchId = current_branch_id();
+            if (! $branchId) {
+                session()->flash('error', __('Please select a branch before importing data.'));
+                $this->importing = false;
+
+                return;
+            }
+
             $this->importResult = $this->importService->import(
                 $this->entityType,
                 $fullPath,
                 [
                     'update_existing' => $this->updateExisting,
                     'skip_duplicates' => $this->skipDuplicates,
-                    'branch_id' => auth()->user()->branch_id,
+                    'branch_id' => $branchId,
                     'module_id' => $this->selectedModuleId,
                 ]
             );

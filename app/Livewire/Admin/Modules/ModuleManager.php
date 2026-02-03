@@ -70,7 +70,7 @@ class ModuleManager extends Component
                 $query->where(function ($q) {
                     $q->where('name', 'like', '%'.$this->search.'%')
                         ->orWhere('name_ar', 'like', '%'.$this->search.'%')
-                        ->orWhere('key', 'like', '%'.$this->search.'%');
+                        ->orWhere('module_key', 'like', '%'.$this->search.'%');
                 });
             })
             ->when($this->filterCategory, fn ($q) => $q->where('category', $this->filterCategory))
@@ -125,7 +125,7 @@ class ModuleManager extends Component
     public function registerModule(ModuleRegistrationService $service): void
     {
         $this->validate([
-            'formKey' => 'required|string|regex:/^[a-z_]+$/|unique:modules,key',
+            'formKey' => 'required|string|regex:/^[a-z_]+$/|unique:modules,module_key',
             'formName' => 'required|string|max:255',
             'formNameAr' => 'required|string|max:255',
             'formIcon' => 'required|string|max:10',

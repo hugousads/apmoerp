@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class Form extends Component
 {
     use AuthorizesRequests;
@@ -44,7 +45,11 @@ class Form extends Component
             $uniqueRule .= ','.$this->serial->id;
         }
 
-        $branchId = auth()->user()?->branch_id;
+        // Resolve the effective branch for validation.
+        // - Editing: use the existing serial branch
+        // - Creating: use the current branch context
+        $branchId = (int) ($this->serial?->branch_id ?? current_branch_id() ?? 0);
+        $branchId = $branchId > 0 ? $branchId : null;
 
         return [
             // V58-CRITICAL-02 FIX: Use BranchScopedExists for branch-aware validation
@@ -81,8 +86,15 @@ class Form extends Component
 
         $this->validate();
 
+        $branchId = (int) ($this->serial?->branch_id ?? current_branch_id() ?? 0);
+
+        if ($branchId <= 0) {
+            $this->addError('branch_id', __('Please select a branch first.'));
+            return null;
+        }
+
         $data = [
-            'branch_id' => auth()->user()->branch_id,
+            'branch_id' => $branchId,
             'product_id' => $this->product_id,
             'warehouse_id' => $this->warehouse_id,
             'batch_id' => $this->batch_id,
@@ -105,23 +117,25 @@ class Form extends Component
         $this->redirectRoute('app.inventory.serials.index', navigate: true);
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
-        $branchId = auth()->user()->branch_id;
+        $branchId = (int) ($this->serial?->branch_id ?? current_branch_id() ?? 0);
 
-        $products = Product::where('branch_id', $branchId)
+        $products = Product::query()
+            ->when($branchId > 0, fn ($q) => $q->where('branch_id', $branchId), fn ($q) => $q->whereRaw('1=0'))
             ->where('is_serialized', true)
             ->orderBy('name')
             ->get();
 
-        $warehouses = Warehouse::where('branch_id', $branchId)
+        $warehouses = Warehouse::query()
+            ->when($branchId > 0, fn ($q) => $q->where('branch_id', $branchId), fn ($q) => $q->whereRaw('1=0'))
             ->orderBy('name')
             ->get();
 
         $batches = [];
-        if ($this->product_id) {
-            $batches = InventoryBatch::where('branch_id', $branchId)
+        if ($branchId > 0 && $this->product_id) {
+            $batches = InventoryBatch::query()
+                ->where('branch_id', $branchId)
                 ->where('product_id', $this->product_id)
                 ->where('status', 'active')
                 ->orderBy('batch_number')

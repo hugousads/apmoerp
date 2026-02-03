@@ -141,7 +141,7 @@ class Index extends Component
 
     protected function loadSuggestions(): void
     {
-        $existingModules = Module::pluck('key')->toArray();
+        $existingModules = Module::pluck('module_key')->toArray();
 
         $allSuggestions = [
             [
@@ -205,7 +205,8 @@ class Index extends Component
 
             try {
                 $service->registerModule([
-                    'key' => $suggestion['key'],
+                    'module_key' => $suggestion['key'],
+                    'slug' => str($suggestion['key'])->slug(),
                     'name' => $suggestion['name'],
                     'name_ar' => $suggestion['name_ar'],
                     'description' => $suggestion['description'],
@@ -227,7 +228,7 @@ class Index extends Component
     {
         $modules = Module::query()
             ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%")
-                ->orWhere('key', 'like', "%{$this->search}%")
+                ->orWhere('module_key', 'like', "%{$this->search}%")
                 ->orWhere('name_ar', 'like', "%{$this->search}%"))
             ->when($this->filterCategory, fn ($q) => $q->where('category', $this->filterCategory))
             ->when($this->filterStatus !== '', fn ($q) => $q->where('is_active', $this->filterStatus === 'active'))

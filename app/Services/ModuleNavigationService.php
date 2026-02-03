@@ -89,7 +89,7 @@ class ModuleNavigationService
             'permission' => $item->required_permissions[0] ?? null,
             'permissions' => $item->required_permissions ?? [],
             'module_id' => $item->module_id,
-            'module_key' => $item->module?->key,
+            'module_key' => $item->module?->module_key,
             'children' => [],
         ];
 

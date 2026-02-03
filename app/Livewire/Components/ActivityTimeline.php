@@ -32,11 +32,8 @@ class ActivityTimeline extends Component
             ->latest()
             ->limit($this->limit);
 
-        // If not admin, filter by branch
-        // Use case-insensitive role check - seeder uses "Super Admin" (Title Case)
-        if (! $user->hasAnyRole(['Super Admin', 'super-admin', 'Admin', 'admin'])) {
-            $query->whereHas('user', fn ($q) => $q->where('branch_id', $user->branch_id));
-        }
+        // IMPORTANT: Branch filtering is already handled by BranchScope on AuditLog (HasBranch).
+        // Adding a manual filter here causes double-scoping and breaks "All Branches".
 
         $this->activities = $query->get()->map(fn ($activity) => [
             'id' => $activity->id,

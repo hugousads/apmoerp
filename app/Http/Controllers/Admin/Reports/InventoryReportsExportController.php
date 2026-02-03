@@ -11,6 +11,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -107,10 +108,10 @@ class InventoryReportsExportController extends Controller
 
             // Set headers
             $col = 1;
-            foreach ($columns as $header) {
-                $sheet->setCellValueByColumnAndRow($col, 1, $header);
-                $col++;
-            }
+	            foreach ($columns as $header) {
+	                $sheet->setCellValue(Coordinate::stringFromColumnIndex($col) . '1', $header);
+	                $col++;
+	            }
 
             // Set data rows
             $rowNum = 2;
@@ -118,7 +119,7 @@ class InventoryReportsExportController extends Controller
                 $col = 1;
                 foreach (array_keys($columns) as $key) {
                     $value = $row[$key] ?? '';
-                    $sheet->setCellValueByColumnAndRow($col, $rowNum, is_scalar($value) ? $value : json_encode($value));
+	                    $sheet->setCellValue(Coordinate::stringFromColumnIndex($col) . $rowNum, is_scalar($value) ? $value : json_encode($value));
                     $col++;
                 }
                 $rowNum++;

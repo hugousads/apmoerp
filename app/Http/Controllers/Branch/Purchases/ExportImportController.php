@@ -99,6 +99,11 @@ class ExportImportController extends Controller
         $updateExisting = $request->input('update_existing', false);
         $file = $request->file('file');
 
+        $branchId = current_branch_id();
+        if (! $branchId) {
+            return back()->with('error', __('Please select a branch before importing purchases.'));
+        }
+
         try {
             $spreadsheet = IOFactory::load($file->getRealPath());
             $worksheet = $spreadsheet->getActiveSheet();
@@ -163,7 +168,7 @@ class ExportImportController extends Controller
                         'discount_amount' => decimal_float($rowData['discount'] ?? 0),
                         'paid_amount' => decimal_float($rowData['paid'] ?? 0),
                         'status' => $rowData['status'],
-                        'branch_id' => auth()->user()->branch_id,
+                        'branch_id' => $branchId,
                     ];
 
                     if ($updateExisting && ! empty($rowData['reference'])) {

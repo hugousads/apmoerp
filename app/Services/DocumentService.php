@@ -244,8 +244,12 @@ class DocumentService
             throw new AuthorizationException('You cannot share documents across branches.');
         }
 
-        if ($document->branch_id && auth()->user()?->branch_id && auth()->user()->branch_id !== $document->branch_id) {
-            throw new AuthorizationException('You cannot share documents outside your branch.');
+        $actor = auth()->user();
+        if ($document->branch_id && $actor) {
+            // Respect view-all permission: only branch-restrict non-privileged users.
+            if (! \App\Services\BranchContextManager::canViewAllBranches($actor) && $actor->branch_id !== $document->branch_id) {
+                throw new AuthorizationException('You cannot share documents outside your branch.');
+            }
         }
 
         DB::transaction(function () use ($document, $userId, $permission, $expiresAt) {

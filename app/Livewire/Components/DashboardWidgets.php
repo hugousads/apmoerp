@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\UserDashboardWidget;
+use App\Services\BranchContextManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -61,18 +62,26 @@ class DashboardWidgets extends Component
             return;
         }
 
-        $cacheKey = "dashboard_widgets:user_{$user->id}:branch_{$user->branch_id}";
+        // Cache MUST include current branch context to prevent cross-branch data leakage.
+        $branchKey = branch_context_cache_key();
+        $cacheKey = "dashboard_widgets:user_{$user->id}:branch_{$branchKey}";
 
         $this->widgetData = Cache::remember($cacheKey, $this->cacheTtl, function () use ($user) {
-            // Use case-insensitive role check - seeder uses "Super Admin" (Title Case)
-            $isAdmin = $user->hasAnyRole(['Super Admin', 'super-admin', 'Admin', 'admin']);
-            $branchId = $user->branch_id;
+            // Determine effective branch filter:
+            // - If a specific branch context is selected, always filter to it (even for admins)
+            // - If user can view-all and context is "All Branches", don't filter
+            // - Otherwise, fall back to user's primary branch
+            $branchId = current_branch_id() ?? ($user->branch_id ? (int) $user->branch_id : null);
+
+            if (BranchContextManager::canViewAllBranches($user) && current_branch_id() === null) {
+                $branchId = null;
+            }
 
             $salesQuery = Sale::query();
             $productsQuery = Product::query();
             $customersQuery = Customer::query();
 
-            if (! $isAdmin && $branchId) {
+            if ($branchId) {
                 $salesQuery->where('branch_id', $branchId);
                 $productsQuery->where('branch_id', $branchId);
                 $customersQuery->where('branch_id', $branchId);
@@ -118,7 +127,7 @@ class DashboardWidgets extends Component
                         ->whereNull('products.deleted_at')
                         ->whereNotNull('products.min_stock')
                         ->where('products.min_stock', '>', 0)
-                        ->when(! $isAdmin && $branchId, fn ($q) => $q->where('products.branch_id', $branchId))
+                        ->when($branchId, fn ($q) => $q->where('products.branch_id', $branchId))
                         ->select('products.id')
                         ->selectRaw('COALESCE(SUM(stock_movements.quantity), 0) as current_stock')
                         ->selectRaw('products.min_stock')
@@ -160,7 +169,7 @@ class DashboardWidgets extends Component
         }
 
         $this->loadUserWidgets();
-        Cache::forget("dashboard_widgets:user_{$user->id}:branch_{$user->branch_id}");
+        Cache::forget("dashboard_widgets:user_{$user->id}:branch_".branch_context_cache_key());
         $this->loadWidgetData();
     }
 
@@ -168,7 +177,7 @@ class DashboardWidgets extends Component
     {
         $user = Auth::user();
         if ($user) {
-            Cache::forget("dashboard_widgets:user_{$user->id}:branch_{$user->branch_id}");
+            Cache::forget("dashboard_widgets:user_{$user->id}:branch_".branch_context_cache_key());
         }
         $this->loadWidgetData();
     }

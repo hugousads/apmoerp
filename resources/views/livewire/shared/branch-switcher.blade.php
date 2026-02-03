@@ -63,7 +63,7 @@
         >
             {{-- All Branches Option --}}
             <button 
-                wire:click="switchBranch(null)"
+                wire:click="switchBranch(0)"
                 @click="open = false"
                 class="w-full flex items-center gap-2 px-3 py-2 text-sm text-start hover:bg-slate-700/50 transition-colors
                        {{ !$selectedBranchId ? 'bg-purple-900/30 border-s-2 border-purple-500' : '' }}"
@@ -125,7 +125,7 @@
                     {{ __('Viewing branch perspective') }}
                 </p>
                 <button 
-                    wire:click="switchBranch(null)"
+                    wire:click="switchBranch(0)"
                     class="text-[10px] font-medium text-emerald-400 hover:text-emerald-300 hover:underline"
                 >
                     {{ __('Exit') }}
@@ -137,7 +137,13 @@
 @endif
 @script
 Livewire.on('branch-switched', () => {
-    Livewire.navigate(window.location.href);
+    // IMPORTANT: Branch switching changes permissions + visible modules + branch scope.
+    // A full reload is the most reliable way to ensure:
+    // - sidebar is rebuilt
+    // - Livewire components are re-mounted
+    // - cached queries are invalidated per-branch
+    // - no stale data leaks from previous branch
+    window.location.reload();
 });
 @endscript
 </div>

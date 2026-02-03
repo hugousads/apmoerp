@@ -130,7 +130,9 @@ class ApprovalPanel extends Component
                     'supplier_id' => $this->purchase->supplier_id,
                 ],
                 userId: actual_user_id(),
-                branchId: auth()->user()->branch_id
+                // Always bind workflow instances to the purchase's branch.
+                // This avoids leaking approvals across branches when the user is in an "All Branches" context.
+                branchId: $this->purchase->branch_id
             );
 
             if ($instance) {

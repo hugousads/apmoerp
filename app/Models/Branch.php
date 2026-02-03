@@ -42,7 +42,9 @@ class Branch extends BaseModel
 
     public function users(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'branch_user')->withTimestamps();
+        return $this->belongsToMany(User::class, 'branch_user')
+            ->withPivot(['is_active', 'activated_at'])
+            ->withTimestamps();
     }
 
     public function modules(): BelongsToMany

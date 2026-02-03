@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin\Reports;
 
+use App\Models\Branch;
 use App\Models\Sale;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -18,7 +19,36 @@ class PosChartsDashboard extends Component
 
     public ?int $branchId = null;
 
-    #[Layout('layouts.app')]
+    public ?string $branchLabel = null;
+
+    
+    protected function syncBranchContext(): void
+    {
+        $this->branchId = current_branch_id();
+
+        if ($this->branchId) {
+            $branch = Branch::query()->find($this->branchId);
+
+            $this->branchLabel = $branch
+                ? ((app()->getLocale() === 'ar' && ! empty($branch->name_ar)) ? $branch->name_ar : $branch->name)
+                : ('#'.$this->branchId);
+        } else {
+            $this->branchLabel = null; // All branches
+        }
+    }
+
+    public function mount(): void
+    {
+        $user = Auth::user();
+
+        if (! $user || ! $user->can('reports.pos.charts')) {
+            abort(403);
+        }
+
+        $this->syncBranchContext();
+    }
+
+#[Layout('layouts.app')]
     public function render()
     {
         $user = Auth::user();
@@ -71,11 +101,22 @@ class PosChartsDashboard extends Component
 
         $groupedByBranch = $sales->groupBy('branch_id');
 
+        $branchIds = $groupedByBranch->keys()->filter()->values();
+        $branchNameMap = $branchIds->isEmpty()
+            ? []
+            : Branch::query()
+                ->whereIn('id', $branchIds)
+                ->get(['id', 'name', 'name_ar'])
+                ->mapWithKeys(fn ($b) => [
+                    $b->id => ((app()->getLocale() === 'ar' && ! empty($b->name_ar)) ? $b->name_ar : $b->name),
+                ])
+                ->toArray();
+
         $branchLabels = [];
         $branchValues = [];
 
         foreach ($groupedByBranch as $branchId => $items) {
-            $branchLabels[] = $branchId ? ('#'.$branchId) : __('N/A');
+            $branchLabels[] = $branchId ? ($branchNameMap[$branchId] ?? ('#'.$branchId)) : __('N/A');
             // V38-FINANCE-01 FIX: Use decimal_float() for proper precision handling
             $branchValues[] = decimal_float($items->sum('grand_total'));
         }
@@ -90,6 +131,9 @@ class PosChartsDashboard extends Component
             'values' => $branchValues,
         ];
 
+        $daysCount = max(1, count($dayLabels));
+        $avgRevenue = $daysCount ? decimal_float($totalRevenue / $daysCount) : 0;
+
         $this->dispatch('pos-charts-update', chartData: [
             'salesByDay' => $chartSalesByDay,
             'salesByBranch' => $chartSalesByBranch,
@@ -98,6 +142,8 @@ class PosChartsDashboard extends Component
         return view('livewire.admin.reports.pos-charts-dashboard', [
             'totalSales' => $totalSales,
             'totalRevenue' => $totalRevenue,
+            'avgRevenue' => $avgRevenue,
+            'branchLabel' => $this->branchLabel,
         ]);
     }
 }

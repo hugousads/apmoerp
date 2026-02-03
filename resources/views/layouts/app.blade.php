@@ -116,11 +116,12 @@
 
 {{-- Main Layout Container with new sidebar --}}
 <div class="erp-layout">
-    {{-- New Sidebar (includes overlay) - Persist across navigation for smoother UX --}}
-    {{-- Dynamic persist key includes locale and branch context to ensure sidebar refreshes when these change --}}
-    @persist('sidebar-'.app()->getLocale().'-'.(session('admin_branch_context') ?? session('selected_branch_id') ?? 'default'))
+    {{-- New Sidebar (includes overlay) --}}
+    {{-- NOTE: We intentionally do NOT persist the sidebar across navigation.
+         Persisting can cause stale/incorrect menus after branch switches and
+         can break Alpine state on some browsers/PWA contexts.
+         Keeping it server-rendered guarantees correct permissions + branch menus. --}}
     @includeIf('layouts.sidebar-new')
-    @endpersist
 
     {{-- Main Content Wrapper --}}
     <div class="erp-main-wrapper">

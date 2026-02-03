@@ -19,6 +19,15 @@ class ModuleRegistrationService
      */
     public function registerModule(array $moduleData): Module
     {
+        // Accept both "module_key" (DB column) and legacy "key" input.
+        if (empty($moduleData['module_key']) && ! empty($moduleData['key'])) {
+            $moduleData['module_key'] = $moduleData['key'];
+        }
+
+        if (empty($moduleData['module_key'])) {
+            throw new \InvalidArgumentException('module_key is required');
+        }
+
         return DB::transaction(function () use ($moduleData) {
             // Create or update module
             $module = Module::updateOrCreate(
@@ -227,16 +236,19 @@ class ModuleRegistrationService
     {
         $errors = [];
 
-        // Required fields
-        $required = ['key', 'name'];
-        foreach ($required as $field) {
-            if (empty($moduleData[$field])) {
-                $errors[] = "Field '{$field}' is required";
-            }
+        // Required fields: accept either "module_key" (preferred) or legacy "key"
+        if (empty($moduleData['module_key']) && empty($moduleData['key'])) {
+            $errors[] = "Field 'module_key' (or 'key') is required";
         }
 
+        if (empty($moduleData['name'])) {
+            $errors[] = "Field 'name' is required";
+        }
+
+        $key = $moduleData['module_key'] ?? $moduleData['key'] ?? null;
+
         // Validate key format
-        if (isset($moduleData['key']) && ! preg_match('/^[a-z_]+$/', $moduleData['key'])) {
+        if ($key && ! preg_match('/^[a-z_]+$/', $key)) {
             $errors[] = 'Module key must contain only lowercase letters and underscores';
         }
 
@@ -250,6 +262,7 @@ class ModuleRegistrationService
     }
 
     /**
+
      * Validate navigation structure
      */
     protected function validateNavigationStructure(array $navigation, string $path = ''): array

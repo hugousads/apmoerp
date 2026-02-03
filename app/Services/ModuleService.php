@@ -34,7 +34,7 @@ class ModuleService implements ModuleServiceInterface
             // Also get all active modules from the database as fallback definitions
             $allModules = Module::where('is_active', true)
                 ->get()
-                ->keyBy('key');
+                ->keyBy('module_key');
 
             return $branchModules->map(function (BranchModule $bm) use ($allModules) {
                 // Prefer the related module, fallback to looking up by key, then to defaults
@@ -134,7 +134,7 @@ class ModuleService implements ModuleServiceInterface
             ->with('module')
             ->get()
             ->mapWithKeys(function (BranchModule $bm) {
-                $moduleKey = $bm->module_key ?: $bm->module?->key;
+                $moduleKey = $bm->module_key ?: $bm->module?->module_key;
 
                 if (! $moduleKey) {
                     return [];
@@ -165,12 +165,12 @@ class ModuleService implements ModuleServiceInterface
                 ->where('enabled', true)
                 ->with('module')
                 ->get()
-                ->map(fn (BranchModule $bm) => $bm->module_key ?: $bm->module?->key)
+                ->map(fn (BranchModule $bm) => $bm->module_key ?: $bm->module?->module_key)
                 ->filter()
                 ->values()
                 ->toArray();
 
-            return $modules->filter(fn ($m) => in_array($m->key, $enabledKeys))
+            return $modules->filter(fn ($m) => in_array($m->module_key, $enabledKeys))
                 ->map(fn ($m) => $this->mapModuleToArray($m))
                 ->values()
                 ->all();

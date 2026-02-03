@@ -166,19 +166,37 @@ Route::get('/download/export', function () {
         // No additional permission check needed here since we verify the user owns the export
 
         $resolvedPath = realpath($exportInfo['path']);
-        $exportsBase = realpath(storage_path('app/exports')) ?: storage_path('app/exports');
+
+        // Allow exports from both legacy and current export directories.
+        // In this project, the default "local" disk is rooted at storage/app/private,
+        // so exports may be stored under storage/app/private/exports.
+        $allowedBases = [
+            realpath(storage_path('app/exports')) ?: storage_path('app/exports'),
+            realpath(storage_path('app/private/exports')) ?: storage_path('app/private/exports'),
+            realpath(storage_path('app/public/exports')) ?: storage_path('app/public/exports'),
+        ];
+
+        $allowedBases = array_values(array_unique(array_filter($allowedBases)));
+
+        $baseOk = false;
+        foreach ($allowedBases as $base) {
+            if ($resolvedPath && Str::startsWith($resolvedPath, $base)) {
+                $baseOk = true;
+                break;
+            }
+        }
 
         logger()->info('Export path validation', [
             'resolved_path' => $resolvedPath,
-            'allowed_base' => $exportsBase,
+            'allowed_bases' => $allowedBases,
             'file_exists' => file_exists($exportInfo['path']),
         ]);
 
-        if (! $resolvedPath || ! Str::startsWith($resolvedPath, $exportsBase) || ! file_exists($resolvedPath)) {
+        if (! $resolvedPath || ! $baseOk || ! file_exists($resolvedPath)) {
             logger()->error('Invalid export path', [
                 'resolved_path' => $resolvedPath,
                 'original_path' => $exportInfo['path'],
-                'allowed_base' => $exportsBase,
+                'allowed_bases' => $allowedBases,
             ]);
             abort(403, 'Invalid export path');
         }

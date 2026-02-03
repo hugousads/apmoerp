@@ -13,6 +13,7 @@ use App\Models\Sale;
 use App\Models\Supplier;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\BranchContextManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
@@ -37,7 +38,20 @@ class GlobalSearch extends Component
         $table = $model->getTable();
         $hasBranchColumn = self::$columnCache[$table] ??= Schema::hasColumn($table, 'branch_id');
 
-        return $query->when($user->branch_id && $hasBranchColumn, fn ($q) => $q->where('branch_id', $user->branch_id));
+        if (! $hasBranchColumn) {
+            return $query;
+        }
+
+        // IMPORTANT: Use the current branch context (from the branch switcher) instead of
+        // auth()->user()->branch_id. This prevents stale / wrong results when admins switch branches.
+        $contextBranchId = current_branch_id() ?? ($user->branch_id ? (int) $user->branch_id : null);
+
+        // Users who can view all branches and are in "All Branches" context should not be filtered.
+        if (BranchContextManager::canViewAllBranches($user) && current_branch_id() === null) {
+            return $query;
+        }
+
+        return $query->when($contextBranchId, fn ($q) => $q->where('branch_id', $contextBranchId));
     }
 
     /**
@@ -70,7 +84,8 @@ class GlobalSearch extends Component
         }
 
         // Short cache to avoid repeated DB queries for same search
-        $cacheKey = sprintf('global_search:%d:%s', $user->id, md5($query));
+        // Cache MUST include branch context to prevent cross-branch data showing after switch.
+        $cacheKey = sprintf('global_search:%d:%s:%s', $user->id, branch_context_cache_key(), md5($query));
 
         return Cache::remember($cacheKey, 10, function () use ($query, $user) {
             return $this->performSearch($query, $user);

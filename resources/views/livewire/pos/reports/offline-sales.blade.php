@@ -16,13 +16,23 @@
             <label class="block text-[11px] font-medium text-slate-500 mb-0.5">
                 {{ __('Branch') }}
             </label>
-            <select wire:model.live.debounce.500ms="branchId"
-                    class="rounded border border-slate-200 bg-white px-2 py-1 text-xs">
-                <option value="">{{ __('All') }}</option>
-                @foreach ($branches as $branch)
-                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                @endforeach
-            </select>
+	            @if($branchContextId)
+	                @php
+	                    $lockedBranchName = optional($branches->firstWhere('id', $branchContextId))->name ?? __('Selected Branch');
+	                @endphp
+	                <div class="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-900 flex items-center gap-2">
+	                    <span class="font-semibold truncate">{{ $lockedBranchName }}</span>
+	                    <span class="ms-auto text-[11px] bg-white/70 border border-emerald-200 rounded-full px-2 py-0.5">{{ __('Locked') }}</span>
+	                </div>
+	            @else
+	                <select wire:model.live.debounce.500ms="branchId"
+	                        class="rounded border border-slate-200 bg-white px-2 py-1 text-xs">
+	                    <option value="">{{ __('All') }}</option>
+	                    @foreach ($branches as $branch)
+	                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+	                    @endforeach
+	                </select>
+	            @endif
         </div>
         <div>
             <label class="block text-[11px] font-medium text-slate-500 mb-0.5">

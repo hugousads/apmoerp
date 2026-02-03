@@ -11,6 +11,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.app')]
 class Index extends Component
 {
     use AuthorizesRequests;
@@ -26,6 +27,17 @@ class Index extends Component
 
     public string $sortDirection = 'desc';
 
+    /**
+     * Hard allow-list of sortable fields to avoid SQL injection.
+     */
+    protected array $allowedSortFields = [
+        'created_at',
+        'serial_number',
+        'unit_cost',
+        'warranty_end',
+        'status',
+    ];
+
     public function mount(): void
     {
         $this->authorize('inventory.products.view');
@@ -38,6 +50,10 @@ class Index extends Component
 
     public function sortBy(string $field): void
     {
+        if (! in_array($field, $this->allowedSortFields, true)) {
+            return;
+        }
+
         if ($this->sortField === $field) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
@@ -48,9 +64,8 @@ class Index extends Component
 
     public function getStatistics(): array
     {
-        $branchId = auth()->user()->branch_id;
-
-        $stats = InventorySerial::where('branch_id', $branchId)
+        // InventorySerial is branch-scoped. Do not manually force the user's branch.
+        $stats = InventorySerial::query()
             ->selectRaw('
                 COUNT(*) as total_serials,
                 COUNT(CASE WHEN status = ? THEN 1 END) as in_stock,
@@ -67,12 +82,9 @@ class Index extends Component
         ];
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
-        $branchId = auth()->user()->branch_id;
-
-        $query = InventorySerial::where('branch_id', $branchId)
+        $query = InventorySerial::query()
             ->with(['product', 'warehouse', 'customer']);
 
         if ($this->search) {
@@ -88,6 +100,9 @@ class Index extends Component
             $query->where('status', $this->status);
         }
 
+        if (! in_array($this->sortField, $this->allowedSortFields, true)) {
+            $this->sortField = 'created_at';
+        }
         $query->orderBy($this->sortField, $this->sortDirection);
 
         $serials = $query->paginate(15);

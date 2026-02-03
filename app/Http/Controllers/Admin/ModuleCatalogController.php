@@ -28,7 +28,7 @@ class ModuleCatalogController extends Controller
         $this->authorize('modules.manage');
         
         $validated = $this->validate($request, [
-            'key' => ['required', 'string', 'max:100', 'unique:modules,key'],
+            'key' => ['required', 'string', 'max:100', 'unique:modules,module_key'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],

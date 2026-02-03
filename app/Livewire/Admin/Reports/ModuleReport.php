@@ -22,6 +22,14 @@ class ModuleReport extends Component
 
     public ?int $selectedBranchId = null;
 
+    /**
+     * If a Super Admin (or branches.view-all) selected a "branch perspective"
+     * from the global branch switcher, we lock this report to that branch.
+     * This avoids asking the user to pick the branch again.
+     */
+    public ?int $branchContextId = null;
+    public ?string $branchContextName = null;
+
     public array $reportData = [];
 
     public array $summary = [];
@@ -43,8 +51,15 @@ class ModuleReport extends Component
         $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
         $this->dateTo = now()->format('Y-m-d');
 
+        // Global (request-level) branch context selected from the sidebar switcher.
+        $this->branchContextId = current_branch_id();
+        if ($this->branchContextId) {
+            $this->selectedBranchId = $this->branchContextId;
+            $this->branchContextName = \App\Models\Branch::find($this->branchContextId)?->name;
+        }
+
         $user = auth()->user();
-        if (! $user->hasAnyRole(['Super Admin', 'super-admin'])) {
+        if (! $this->selectedBranchId && ! $user->hasAnyRole(['Super Admin', 'super-admin'])) {
             $branches = $this->branchAccessService->getUserBranches($user);
             $this->selectedBranchId = $branches->first()?->id;
         }

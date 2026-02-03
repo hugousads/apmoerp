@@ -36,7 +36,7 @@
                             <span class="text-2xl">{{ $module->icon ?? '📦' }}</span>
                             <div>
                                 <h3 class="font-semibold text-slate-800">{{ $module->localized_name }}</h3>
-                                <p class="text-xs text-slate-500">{{ $module->key }}</p>
+                                <p class="text-xs text-slate-500">{{ $module->module_key }}</p>
                             </div>
                         </div>
                         @if($module->is_core)

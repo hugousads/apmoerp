@@ -110,9 +110,13 @@ trait WithLazyLoading
     protected function buildCacheKey(string $key): string
     {
         $userId = auth()->id() ?? 'guest';
-        $branchId = auth()->user()?->branch_id ?? 'all';
+        // IMPORTANT: Cache keys must vary by the *current branch context* (branch switcher),
+        // not only by the user's primary branch_id.
+        $branchKey = function_exists('branch_context_cache_key')
+            ? branch_context_cache_key()
+            : ((function_exists('current_branch_id') && current_branch_id()) ? (string) current_branch_id() : 'all');
 
-        return "lazy_{$key}_{$userId}_{$branchId}";
+        return "lazy_{$key}_{$userId}_{$branchKey}";
     }
 
     /**

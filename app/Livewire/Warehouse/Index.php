@@ -6,6 +6,7 @@ namespace App\Livewire\Warehouse;
 
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\BranchContextManager;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
@@ -58,8 +59,12 @@ class Index extends Component
             session()->flash('success', __('Warehouse deleted successfully'));
 
             $user = auth()->user();
-            Cache::forget('warehouse_stats_'.($user?->branch_id ?? 'all'));
-            Cache::forget('all_warehouses_'.($user?->branch_id ?? 'all'));
+            $branchId = current_branch_id() ?? ($user?->branch_id ? (int) $user->branch_id : null);
+            if ($user && BranchContextManager::canViewAllBranches($user) && current_branch_id() === null) {
+                $branchId = null;
+            }
+            Cache::forget('warehouse_stats_'.branch_context_cache_key($branchId));
+            Cache::forget('all_warehouses_'.branch_context_cache_key($branchId));
         }
     }
 
@@ -73,26 +78,36 @@ class Index extends Component
             $warehouse->update(['status' => $newStatus]);
 
             $user = auth()->user();
-            Cache::forget('warehouse_stats_'.($user?->branch_id ?? 'all'));
-            Cache::forget('all_warehouses_'.($user?->branch_id ?? 'all'));
+            $branchId = current_branch_id() ?? ($user?->branch_id ? (int) $user->branch_id : null);
+            if ($user && BranchContextManager::canViewAllBranches($user) && current_branch_id() === null) {
+                $branchId = null;
+            }
+            Cache::forget('warehouse_stats_'.branch_context_cache_key($branchId));
+            Cache::forget('all_warehouses_'.branch_context_cache_key($branchId));
         }
     }
 
     public function getStatistics(): array
     {
         $user = auth()->user();
-        $cacheKey = 'warehouse_stats_'.($user?->branch_id ?? 'all');
 
-        return Cache::remember($cacheKey, 300, function () use ($user) {
+        $branchId = current_branch_id() ?? ($user?->branch_id ? (int) $user->branch_id : null);
+        if ($user && BranchContextManager::canViewAllBranches($user) && current_branch_id() === null) {
+            $branchId = null;
+        }
+
+        $cacheKey = 'warehouse_stats_'.branch_context_cache_key($branchId);
+
+        return Cache::remember($cacheKey, 300, function () use ($user, $branchId) {
             $warehouseQuery = Warehouse::query();
 
-            if ($user && $user->branch_id) {
-                $warehouseQuery->where('branch_id', $user->branch_id);
+            if ($branchId) {
+                $warehouseQuery->where('branch_id', $branchId);
             }
 
             $stockMovementQuery = StockMovement::query();
-            if ($user && $user->branch_id) {
-                $stockMovementQuery->whereHas('warehouse', fn ($q) => $q->where('branch_id', $user->branch_id));
+            if ($branchId) {
+                $stockMovementQuery->whereHas('warehouse', fn ($q) => $q->where('branch_id', $branchId));
             }
             // quantity is signed: positive = in, negative = out
             // SECURITY: The selectRaw uses hardcoded column names only
@@ -102,12 +117,12 @@ class Index extends Component
             return [
                 'total_warehouses' => $warehouseQuery->count(),
                 'active_warehouses' => Warehouse::query()
-                    ->when($user && $user->branch_id, fn ($q) => $q->where('branch_id', $user->branch_id))
+                    ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->where('is_active', true)->count(),
                 'total_stock' => $totalStock,
                 'stock_value' => $totalValue,
                 'recent_movements' => StockMovement::query()
-                    ->when($user && $user->branch_id, fn ($q) => $q->whereHas('warehouse', fn ($wq) => $wq->where('branch_id', $user->branch_id)))
+                    ->when($branchId, fn ($q) => $q->whereHas('warehouse', fn ($wq) => $wq->where('branch_id', $branchId)))
                     ->where('created_at', '>=', now()->subDays(7))->count(),
             ];
         });
@@ -117,28 +132,34 @@ class Index extends Component
     public function render()
     {
         $user = auth()->user();
+
+        $branchId = current_branch_id() ?? ($user?->branch_id ? (int) $user->branch_id : null);
+        if ($user && BranchContextManager::canViewAllBranches($user) && current_branch_id() === null) {
+            $branchId = null;
+        }
+
         $warehouses = [];
         $movements = [];
 
         if ($this->activeTab === 'warehouses') {
             $warehouses = Warehouse::query()
-                ->when($user && $user->branch_id, fn ($q) => $q->where('branch_id', $user->branch_id))
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
                 ->orderBy('name')
                 ->paginate(15);
         } else {
             $movements = StockMovement::query()
                 ->with(['product', 'warehouse'])
-                ->when($user && $user->branch_id, fn ($q) => $q->whereHas('warehouse', fn ($wq) => $wq->where('branch_id', $user->branch_id)))
+                ->when($branchId, fn ($q) => $q->whereHas('warehouse', fn ($wq) => $wq->where('branch_id', $branchId)))
                 ->when($this->search, fn ($q) => $q->whereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$this->search}%")))
                 ->when($this->warehouseId, fn ($q) => $q->where('warehouse_id', $this->warehouseId))
                 ->orderBy('created_at', 'desc')
                 ->paginate(15);
         }
 
-        $allWarehouses = Cache::remember('all_warehouses_'.($user?->branch_id ?? 'all'), 600, function () use ($user) {
+        $allWarehouses = Cache::remember('all_warehouses_'.branch_context_cache_key($branchId), 600, function () use ($branchId) {
             return Warehouse::query()
-                ->when($user && $user->branch_id, fn ($q) => $q->where('branch_id', $user->branch_id))
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->get();
         });
 

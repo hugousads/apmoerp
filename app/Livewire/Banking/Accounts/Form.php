@@ -10,6 +10,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class Form extends Component
 {
     use \App\Http\Requests\Traits\HasMultilingualValidation;
@@ -106,15 +107,27 @@ class Form extends Component
         }
     }
 
-    public function save(): mixed
+    public function save(): void
     {
         // V58-HIGH-01 FIX: Re-authorize on mutation to prevent direct method calls
         $this->authorize($this->isEditing ? 'banking.edit' : 'banking.create');
 
         $this->validate();
 
+        // Resolve branch from the current branch context.
+        // IMPORTANT: Creating/modifying a bank account MUST be tied to a concrete branch.
+        // If the user is in an "All Branches" context, they must pick a branch first.
+        $branchId = $this->isEditing
+            ? (int) ($this->account?->branch_id ?? 0)
+            : (int) (current_branch_id() ?? 0);
+
+        if ($branchId <= 0) {
+            $this->addError('branch_id', __('Please select a branch first.'));
+            return;
+        }
+
         $data = [
-            'branch_id' => auth()->user()->branch_id,
+            'branch_id' => $branchId,
             'account_number' => $this->account_number,
             'account_name' => $this->account_name,
             'bank_name' => $this->bank_name,
@@ -158,7 +171,6 @@ class Form extends Component
         $this->redirectRoute('app.banking.accounts.index', navigate: true);
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
         return view('livewire.banking.accounts.form');

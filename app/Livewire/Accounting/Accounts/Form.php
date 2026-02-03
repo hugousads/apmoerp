@@ -25,6 +25,13 @@ class Form extends Component
     public ?int $accountId = null;
 
     /**
+     * The branch context this form is operating on.
+     * - Editing: the existing account branch
+     * - Creating: the current branch context (must be selected)
+     */
+    public ?int $effectiveBranchId = null;
+
+    /**
      * @var array<string,mixed>
      */
     public array $form = [
@@ -44,6 +51,7 @@ class Form extends Component
         $this->authorize('accounting.create');
 
         $this->accountId = $account?->id;
+        $this->effectiveBranchId = $account?->branch_id ?? current_branch_id();
 
         if ($account) {
             $this->form['account_number'] = $account->account_number;
@@ -60,6 +68,8 @@ class Form extends Component
 
     protected function rules(): array
     {
+        $branchId = $this->effectiveBranchId;
+
         return [
             'form.account_number' => [
                 'required',
@@ -73,8 +83,8 @@ class Form extends Component
             'form.currency_code' => ['required', 'string', 'max:10'],
             'form.account_category' => ['nullable', 'string', 'max:100'],
             'form.description' => ['nullable', 'string', 'max:1000'],
-            // V57-CRITICAL-03 FIX: Use BranchScopedExists to prevent cross-branch parent account references
-            'form.parent_id' => ['nullable', new BranchScopedExists('accounts', 'id', null, true)],
+            // Prevent cross-branch parent account references (especially in "All Branches" context)
+            'form.parent_id' => ['nullable', new BranchScopedExists('accounts', 'id', $branchId, true)],
             'form.is_active' => ['boolean'],
         ];
     }
@@ -96,12 +106,11 @@ class Form extends Component
                     $account = Account::findOrFail($accountId);
                 } else {
                     $account = new Account;
-                    // NEW-V15-HIGH-02 FIX: Do not default branch_id to 1
-                    // Require explicit branch selection when user has no branch_id
-                    if ($user->branch_id === null) {
-                        throw new \Exception(__('Branch selection is required. Please select a branch in the form.'));
+                    $branchId = $this->effectiveBranchId;
+                    if (! $branchId) {
+                        throw new \Exception(__('Branch selection is required. Please select a branch using the branch switcher.'));
                     }
-                    $account->branch_id = $user->branch_id;
+                    $account->branch_id = $branchId;
                     $account->balance = 0.00;
                 }
 
@@ -131,6 +140,7 @@ class Form extends Component
             ->get(['code', 'name']);
 
         $parentAccounts = Account::where('is_active', true)
+            ->when($this->effectiveBranchId, fn ($q) => $q->where('branch_id', $this->effectiveBranchId), fn ($q) => $q->whereRaw('1=0'))
             ->when($this->accountId, fn ($q) => $q->where('id', '!=', $this->accountId))
             ->orderBy('account_number')
             ->get(['id', 'account_number', 'name']);

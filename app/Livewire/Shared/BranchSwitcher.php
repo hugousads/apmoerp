@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Shared;
 
 use App\Models\Branch;
+use App\Models\BranchModule;
+use App\Services\BranchContextManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -17,7 +19,11 @@ use Livewire\Component;
  *
  * The selected branch is stored in session and affects:
  * - Sidebar menu items (only shows modules enabled for the selected branch)
- * - Reports and data filtering
+ * - Reports and data filtering (via BranchScope + SetUserBranchContext)
+ *
+ * IMPORTANT:
+ * - We use integer 0 in session as a sentinel for "All Branches".
+ * - When session('admin_branch_context') is 0, we intentionally do NOT scope queries by branch.
  */
 class BranchSwitcher extends Component
 {
@@ -27,12 +33,24 @@ class BranchSwitcher extends Component
     {
         $user = Auth::user();
 
-        // Get the stored branch ID from session, or use user's own branch
-        $this->selectedBranchId = session('admin_branch_context', $user?->branch_id);
+        // For users who can switch branches, persist the context in session.
+        if ($user && $this->canSwitchBranches()) {
+            // If there's no saved context yet, default to the user's own branch (or 0 if none).
+            if (! session()->exists('admin_branch_context')) {
+                session(['admin_branch_context' => (int) ($user->branch_id ?? 0)]);
+            }
+
+            $this->selectedBranchId = (int) session('admin_branch_context', 0);
+
+            return;
+        }
+
+        // For normal users, just reflect their assigned branch (no session context).
+        $this->selectedBranchId = $user?->branch_id;
     }
 
     /**
-     * Check if user can switch branches
+     * Check if user can switch branches.
      */
     public function canSwitchBranches(): bool
     {
@@ -42,12 +60,13 @@ class BranchSwitcher extends Component
             return false;
         }
 
-        // Super Admin or users with branches.view-all can switch
-        return $user->hasRole('Super Admin') || $user->can('branches.view-all');
+        return BranchContextManager::canViewAllBranches($user);
     }
 
     /**
-     * Switch to a different branch context
+     * Switch to a different branch context.
+     *
+     * @param  ?int  $branchId  Branch ID, or 0/null for "All Branches"
      */
     public function switchBranch(?int $branchId): void
     {
@@ -55,18 +74,24 @@ class BranchSwitcher extends Component
             return;
         }
 
-        if ($branchId === null) {
-            // Clear branch context (view all)
-            session()->forget('admin_branch_context');
-            $this->selectedBranchId = null;
-        } else {
-            // Verify branch exists and is active
-            $branch = Branch::where('is_active', true)->find($branchId);
+        // 0 (or null from older calls) means: All Branches
+        if ($branchId === null || (int) $branchId === 0) {
+            session(['admin_branch_context' => 0]);
+            $this->selectedBranchId = 0;
 
-            if ($branch) {
-                session(['admin_branch_context' => $branchId]);
-                $this->selectedBranchId = $branchId;
-            }
+            $this->dispatch('branch-switched');
+
+            return;
+        }
+
+        // Verify branch exists and is active
+        $branch = Branch::query()
+            ->where('is_active', true)
+            ->find((int) $branchId);
+
+        if ($branch) {
+            session(['admin_branch_context' => (int) $branchId]);
+            $this->selectedBranchId = (int) $branchId;
         }
 
         // Refresh the page to apply changes
@@ -74,7 +99,7 @@ class BranchSwitcher extends Component
     }
 
     /**
-     * Get list of available branches
+     * Get list of available branches.
      */
     public function getBranches(): array
     {
@@ -97,7 +122,7 @@ class BranchSwitcher extends Component
     }
 
     /**
-     * Get currently selected branch info
+     * Get currently selected branch info.
      */
     public function getSelectedBranchProperty(): ?Branch
     {
@@ -109,12 +134,20 @@ class BranchSwitcher extends Component
     }
 
     /**
-     * Get enabled modules for the selected branch
+     * Get enabled modules for the selected branch.
      */
     public function getSelectedBranchModulesProperty(): array
     {
+        // For "All Branches" context, show the union of enabled modules across branches.
+        // This prevents modules from disappearing unexpectedly in the sidebar.
         if (! $this->selectedBranchId) {
-            return [];
+            return BranchModule::query()
+                ->where('enabled', true)
+                ->whereNotNull('module_key')
+                ->distinct()
+                ->orderBy('module_key')
+                ->pluck('module_key')
+                ->toArray();
         }
 
         return Branch::find($this->selectedBranchId)

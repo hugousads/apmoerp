@@ -6,19 +6,23 @@ namespace App\Livewire\Pos;
 
 use App\Models\Branch;
 use App\Models\Currency;
+use App\Services\BranchContextManager;
 use App\Services\CurrencyService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class Terminal extends Component
 {
-    #[Layout('layouts.app')]
     public int $branchId;
 
     public string $branchName = '';
 
-    public bool $isSuperAdmin = false;
+    /**
+     * Indicates the authenticated user can view/switch all branches.
+     */
+    public bool $canViewAllBranches = false;
 
     protected CurrencyService $currencyService;
 
@@ -36,17 +40,24 @@ class Terminal extends Component
             abort(403);
         }
 
-        $this->branchId = (int) ($user->branch_id ?? 0);
-        // Use case-insensitive role check - seeder uses "Super Admin" (Title Case)
-        $this->isSuperAdmin = $user->hasAnyRole(['Super Admin', 'super-admin']);
+        $this->canViewAllBranches = BranchContextManager::canViewAllBranches($user);
 
-        if (! $this->isSuperAdmin && $this->branchId === 0) {
-            abort(403, __('You must be assigned to a branch to use the POS terminal.'));
+        // IMPORTANT: POS is a write-heavy module. It must never operate in an "All Branches" context.
+        // Always resolve the effective branch from the current branch context (Branch Switcher).
+        $this->branchId = (int) (current_branch_id() ?? 0);
+
+        if ($this->branchId === 0) {
+            // Non-privileged users MUST have a branch assignment.
+            if (! $this->canViewAllBranches) {
+                abort(403, __('You must be assigned to a branch to use the POS terminal.'));
+            }
+
+            // Privileged users: tell them to select a branch first.
+            abort(403, __('Please select a branch from the branch switcher before using the POS terminal.'));
         }
 
-        $branch = $this->branchId ? Branch::find($this->branchId) : null;
-        $this->branchName = $branch?->name
-            ?? ($this->isSuperAdmin ? __('Super Admin (select a branch)') : __('Branch not found'));
+        $branch = Branch::find($this->branchId);
+        $this->branchName = $branch?->name ?? __('Branch not found');
     }
 
     public function render()

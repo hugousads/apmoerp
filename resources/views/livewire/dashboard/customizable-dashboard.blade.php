@@ -122,17 +122,63 @@
     @endif
 
     {{-- Widgets Container (Sortable) --}}
-    <div 
-        id="widgets-container"
-        class="space-y-6"
-    >
+	@php
+	    $containerClass = match ($layoutMode) {
+	        'compact' => 'space-y-4',
+	        'expanded' => 'grid grid-cols-12 gap-8',
+	        default => 'grid grid-cols-12 gap-6',
+	    };
+
+	    $widgetSpanClass = function (array $widget) use ($layoutMode): string {
+	        $size = $widget['size'] ?? 'medium';
+
+	        // List mode
+	        if ($layoutMode === 'compact') {
+	            return 'w-full';
+	        }
+
+	        // Expanded mode favors larger cards
+	        if ($layoutMode === 'expanded') {
+	            return match ($size) {
+	                'full', 'large' => 'col-span-12',
+	                'small' => 'col-span-12 md:col-span-6 xl:col-span-4',
+	                'medium' => 'col-span-12 xl:col-span-8',
+	                default => 'col-span-12 xl:col-span-6',
+	            };
+	        }
+
+	        // Default grid
+	        return match ($size) {
+	            'full' => 'col-span-12',
+	            'large' => 'col-span-12 xl:col-span-8',
+	            'small' => 'col-span-12 md:col-span-6 xl:col-span-4',
+	            default => 'col-span-12 xl:col-span-6',
+	        };
+	    };
+	@endphp
+
+	<div 
+	    id="widgets-container"
+	    class="{{ $containerClass }}"
+	>
         @foreach($widgets as $widget)
             @if($widget['visible'])
-                <div 
-                    class="widget-item {{ $isEditing ? 'cursor-move ring-2 ring-dashed ring-amber-300 dark:ring-amber-600' : '' }}"
+	            <div 
+	                class="widget-item relative {{ $widgetSpanClass($widget) }} {{ $isEditing ? 'ring-2 ring-dashed ring-amber-300 dark:ring-amber-600' : '' }}"
                     data-widget="{{ $widget['key'] }}"
                     wire:key="widget-{{ $widget['key'] }}"
                 >
+	                @if($isEditing)
+	                    <div
+	                        class="drag-handle absolute top-3 end-3 z-10 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 border border-amber-200 dark:border-amber-600 text-amber-700 dark:text-amber-300 cursor-move"
+	                        title="{{ __('Drag to reorder') }}"
+	                    >
+	                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 10h16M4 14h16"/>
+	                        </svg>
+	                    </div>
+	                @endif
+
                     @switch($widget['key'])
                         @case('quick_actions')
                             @include('livewire.dashboard.partials.quick-actions-widget')
@@ -262,13 +308,51 @@ function initDashboardCharts() {
     }
 }
 
+function updateSalesChart(payload) {
+    if (!payload) return;
+    const key = componentId + ':sales';
+    const chart = window.__lwCharts[key];
+    if (chart) {
+        chart.data.labels = payload.labels || [];
+        if (chart.data.datasets && chart.data.datasets[0]) {
+            chart.data.datasets[0].data = payload.data || [];
+        }
+        chart.update();
+    } else {
+        initDashboardCharts();
+    }
+}
+
+function updateInventoryChart(payload) {
+    if (!payload) return;
+    const key = componentId + ':inventory';
+    const chart = window.__lwCharts[key];
+    if (chart) {
+        if (payload.labels) {
+            chart.data.labels = payload.labels;
+        }
+        if (chart.data.datasets && chart.data.datasets[0]) {
+            chart.data.datasets[0].data = payload.data || [];
+        }
+        chart.update();
+    } else {
+        initDashboardCharts();
+    }
+}
+
 function initSortable() {
     const container = document.getElementById('widgets-container');
     if (!container || typeof Sortable === 'undefined') return;
+
+    // Re-init safely (layout mode changes can replace the container)
+    if (window.__lwSortables[componentId]) {
+        window.__lwSortables[componentId].destroy();
+        delete window.__lwSortables[componentId];
+    }
     
     window.__lwSortables[componentId] = new Sortable(container, {
         animation: 300,
-        handle: '.widget-item',
+        handle: '.drag-handle',
         ghostClass: 'opacity-50',
         disabled: !@json($isEditing),
         onEnd: (evt) => {
@@ -283,6 +367,28 @@ function initSortable() {
 function initAll() {
     initDashboardCharts();
     initSortable();
+
+    // React to Livewire events
+    Livewire.on('dashboard-edit-mode', (payload) => {
+        const editing = (payload && typeof payload === 'object' && ('editing' in payload))
+            ? !!payload.editing
+            : !!payload;
+        const sortable = window.__lwSortables[componentId];
+        if (sortable) {
+            sortable.option('disabled', !editing);
+        }
+    });
+
+    Livewire.on('dashboard-layout-mode', () => {
+        // Delay to ensure DOM updates are applied before reinit
+        setTimeout(initSortable, 0);
+    });
+
+    Livewire.on('dashboard-charts-update', (payload) => {
+        if (!payload || typeof payload !== 'object') return;
+        updateSalesChart(payload.sales);
+        updateInventoryChart(payload.inventory);
+    });
 }
 
 // Load Chart.js and Sortable if not already loaded

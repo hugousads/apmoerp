@@ -7,6 +7,7 @@ namespace App\Livewire\Admin\Modules;
 use App\Livewire\Concerns\HandlesErrors;
 use App\Models\Module;
 use App\Models\ModuleCustomField;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class Form extends Component
@@ -39,19 +40,24 @@ class Form extends Component
 
     protected function rules(): array
     {
-        $unique = $this->editMode ? '|unique:modules,key,'.$this->module->id : '|unique:modules,key';
+        $uniqueRule = Rule::unique('modules', 'module_key');
+
+        if ($this->editMode && $this->module) {
+            $uniqueRule = $uniqueRule->ignore($this->module->id);
+        }
 
         return [
-            'key' => 'required|string|max:50'.$unique,
-            'name' => 'required|string|max:255',
-            'name_ar' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'description_ar' => 'nullable|string',
-            'icon' => 'nullable|string|max:50',
-            'color' => 'nullable|string|max:50',
-            'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0',
-            'customFields' => 'array',
+            // UI field is "key" but DB column is "module_key"
+            'key' => ['required', 'string', 'max:50', $uniqueRule],
+            'name' => ['required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'description_ar' => ['nullable', 'string'],
+            'icon' => ['nullable', 'string', 'max:50'],
+            'color' => ['nullable', 'string', 'max:50'],
+            'is_active' => ['boolean'],
+            'sort_order' => ['integer', 'min:0'],
+            'customFields' => ['array'],
         ];
     }
 
@@ -116,6 +122,10 @@ class Form extends Component
 
         $validated = $this->validate();
         $moduleData = collect($validated)->except('customFields')->toArray();
+
+        // Map UI field 'key' to DB column 'module_key'
+        $moduleData['module_key'] = $moduleData['key'];
+        unset($moduleData['key']);
         $customFields = $this->customFields;
         $editMode = $this->editMode;
         $existingModule = $this->module;

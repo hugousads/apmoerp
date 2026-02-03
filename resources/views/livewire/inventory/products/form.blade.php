@@ -32,16 +32,25 @@
                 <select wire:model.live="selectedModuleId" class="erp-input" {{ !$productId ? 'required' : '' }}>
                     <option value="">{{ __('Select a module that supports items...') }}</option>
                     @foreach($modules as $module)
-                        <option value="{{ $module->id }}">
-                            {{ $module->name }}
-                            @if($module->is_service)
-                                ({{ __('Service') }})
-                            @elseif($module->is_rental)
-                                ({{ __('Rental') }})
-                            @else
-                                ({{ __('Stock Item') }})
-                            @endif
-                        </option>
+                        @php
+                            $moduleId = data_get($module, 'id');
+                            $moduleName = data_get($module, 'name');
+                            $isService = (bool) data_get($module, 'is_service');
+                            $isRental = (bool) data_get($module, 'is_rental');
+                        @endphp
+
+                        @if($moduleId)
+                            <option value="{{ $moduleId }}">
+                                {{ $moduleName }}
+                                @if($isService)
+                                    ({{ __('Service') }})
+                                @elseif($isRental)
+                                    ({{ __('Rental') }})
+                                @else
+                                    ({{ __('Stock Item') }})
+                                @endif
+                            </option>
+                        @endif
                     @endforeach
                 </select>
                 @error('form.module_id')
@@ -125,7 +134,7 @@
                     <select wire:model="form.category_id" class="erp-input">
                         <option value="">{{ __('Select Category') }}</option>
                         @foreach($categories as $category)
-                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                            <option value="{{ is_array($category) ? ($category['id'] ?? '') : ($category->id ?? '') }}">{{ is_array($category) ? ($category['name'] ?? '') : ($category->name ?? '') }}</option>
                         @endforeach
                     </select>
                     @error('form.category_id')
@@ -146,7 +155,7 @@
                     <select wire:model="form.unit_id" class="erp-input">
                         <option value="">{{ __('Select Unit') }}</option>
                         @foreach($units as $unit)
-                            <option value="{{ $unit->id }}">{{ $unit->name }} ({{ $unit->symbol }})</option>
+                            <option value="{{ is_array($unit) ? ($unit['id'] ?? '') : ($unit->id ?? '') }}">{{ is_array($unit) ? ($unit['name'] ?? '') : ($unit->name ?? '') }} ({{ is_array($unit) ? ($unit['symbol'] ?? '') : ($unit->symbol ?? '') }})</option>
                         @endforeach
                     </select>
                     @error('form.unit_id')
@@ -276,7 +285,8 @@
                     {{ __('Module-Specific Fields') }}
                     @if($selectedModuleId)
                         <span class="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs">
-                            {{ $modules->firstWhere('id', $selectedModuleId)?->name }}
+                            @php($selectedModule = collect($modules)->firstWhere('id', $selectedModuleId))
+                            {{ data_get($selectedModule, 'name') }}
                         </span>
                     @endif
                 </h2>

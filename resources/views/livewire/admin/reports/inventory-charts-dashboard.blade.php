@@ -20,10 +20,13 @@
             <p class="text-xl font-semibold text-emerald-600">{{ number_format($totalStock, 2) }}</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] text-slate-500 mb-1">{{ __('Branch filter') }}</p>
-            <input type="number" wire:model="branchId"
-                   placeholder="{{ __('Branch ID (optional)') }}"
-                   class="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs">
+            <p class="text-[11px] text-slate-500 mb-1">{{ __('Current branch') }}</p>
+            <p class="text-sm font-semibold text-slate-800">
+                {{ $branchLabel ?: __('All branches') }}
+            </p>
+            <p class="mt-1 text-[11px] text-slate-400">
+                {{ __('Change the branch from the sidebar switcher.') }}
+            </p>
         </div>
     </div>
 

@@ -14,6 +14,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class Form extends Component
 {
     use AuthorizesRequests;
@@ -63,6 +64,9 @@ class Form extends Component
 
     protected function rules(): array
     {
+        $branchId = (int) ($this->asset?->branch_id ?? current_branch_id() ?? 0);
+        $branchId = $branchId > 0 ? $branchId : null;
+
         return array_merge([
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:255',
@@ -74,8 +78,8 @@ class Form extends Component
             'useful_life_months' => 'nullable|integer|min:0|max:11',
             'depreciation_method' => 'required|in:straight_line,declining_balance,units_of_production',
             'depreciation_rate' => 'nullable|numeric|min:0|max:100',
-            // V57-CRITICAL-03 FIX: Use BranchScopedExists to prevent cross-branch supplier references
-            'supplier_id' => ['nullable', new BranchScopedExists('suppliers', 'id', null, true)],
+            // Prevent cross-branch supplier references.
+            'supplier_id' => ['nullable', new BranchScopedExists('suppliers', 'id', $branchId, true)],
             'warranty_expiry' => 'nullable|date',
             'assigned_to' => 'nullable|exists:users,id',
         ], [
@@ -110,8 +114,16 @@ class Form extends Component
 
         $this->validate();
 
+        // Resolve the branch for this asset (edit) or from the current branch context (create).
+        $branchId = (int) ($this->asset?->branch_id ?? current_branch_id() ?? 0);
+
+        if ($branchId <= 0) {
+            $this->addError('branch_id', __('Please select a branch first.'));
+            return null;
+        }
+
         $data = [
-            'branch_id' => auth()->user()->branch_id,
+            'branch_id' => $branchId,
             'name' => $this->name,
             'description' => $this->description,
             'category' => $this->category,
@@ -152,16 +164,26 @@ class Form extends Component
         );
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
-        $suppliers = Supplier::where('branch_id', auth()->user()->branch_id)
+        // IMPORTANT: Supplier and User lists must be bound to a concrete branch.
+        // In an "All Branches" context, the global scopes may be bypassed, so we explicitly
+        // constrain to the asset branch (edit) or the current branch (create).
+        $branchId = (int) ($this->asset?->branch_id ?? current_branch_id() ?? 0);
+
+        $suppliers = Supplier::query()
+            ->when($branchId > 0, fn ($q) => $q->where('branch_id', $branchId), fn ($q) => $q->whereRaw('1=0'))
             ->orderBy('name')
             ->get();
 
-        $users = User::whereHas('branches', function ($q) {
-            $q->where('branches.id', auth()->user()->branch_id);
-        })->orderBy('name')->get();
+        $users = User::query()
+            ->when(
+                $branchId > 0,
+                fn ($q) => $q->whereHas('branches', fn ($qb) => $qb->where('branches.id', $branchId)),
+                fn ($q) => $q->whereRaw('1=0')
+            )
+            ->orderBy('name')
+            ->get();
 
         return view('livewire.fixed-assets.form', [
             'suppliers' => $suppliers,

@@ -126,9 +126,11 @@ class BranchContextManager
             return [];
         }
 
-        // V8-CRITICAL-N01 FIX: Check if user is Super Admin (has access to all branches)
-        // Return null as sentinel value for "ALL branches" - distinct from [] which means "no access"
-        if (self::isSuperAdmin($user)) {
+        // V8-CRITICAL-N01 FIX:
+        // Users who can view all branches (Super Admin OR branches.view-all) should have
+        // access to ALL branches. We return null as a sentinel value for "ALL branches"
+        // (distinct from [] which means "no access").
+        if (self::canViewAllBranches($user)) {
             self::$cachedBranchIds = null;
             self::$cachedBranchIdsResolved = true;
 
@@ -154,7 +156,12 @@ class BranchContextManager
                     }]);
                 }
 
-                $additionalBranches = $user->branches->pluck('id')->toArray();
+                // Only consider active pivot assignments when available.
+                // If pivot column doesn't exist yet, pivot->is_active will be null and we treat it as "active".
+                $additionalBranches = $user->branches
+                    ->filter(fn ($branch) => (bool) ($branch->pivot->is_active ?? true))
+                    ->pluck('id')
+                    ->toArray();
                 $branchIds = array_unique(array_merge($branchIds, $additionalBranches));
             } catch (\Exception) {
                 // Silently ignore relationship loading errors
@@ -189,6 +196,34 @@ class BranchContextManager
     }
 
     /**
+     * Check if user can view all branches.
+     *
+     * "View all" is granted to:
+     * - Super Admin role
+     * - Permission: branches.view-all (and a legacy alias if present)
+     */
+    public static function canViewAllBranches(?object $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (self::isSuperAdmin($user)) {
+            return true;
+        }
+
+        if (method_exists($user, 'can')) {
+            try {
+                return $user->can('branches.view-all') || $user->can('access-all-branches');
+            } catch (\Exception) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get the current branch ID from the authenticated user
      * Returns the primary branch_id of the current user
      *
@@ -210,7 +245,14 @@ class BranchContextManager
             return null;
         }
 
-        // Return user's primary branch ID if set
+        // IMPORTANT: If the user can view/switch all branches and there is NO explicit branch
+        // selected for this request, then the current context is "All Branches" and we must
+        // return null (fail closed for write operations).
+        if (self::canViewAllBranches($user)) {
+            return null;
+        }
+
+        // Return user's primary branch ID if set (regular users).
         if (isset($user->branch_id) && $user->branch_id !== null) {
             return (int) $user->branch_id;
         }

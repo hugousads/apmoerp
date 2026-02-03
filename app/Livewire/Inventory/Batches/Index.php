@@ -11,6 +11,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.app')]
 class Index extends Component
 {
     use AuthorizesRequests;
@@ -26,6 +27,18 @@ class Index extends Component
 
     public string $sortDirection = 'desc';
 
+    /**
+     * Hard allow-list of sortable fields to avoid SQL injection in orderBy.
+     */
+    protected array $allowedSortFields = [
+        'created_at',
+        'batch_number',
+        'quantity',
+        'unit_cost',
+        'expiry_date',
+        'status',
+    ];
+
     public function mount(): void
     {
         $this->authorize('inventory.products.view');
@@ -38,6 +51,10 @@ class Index extends Component
 
     public function sortBy(string $field): void
     {
+        if (! in_array($field, $this->allowedSortFields, true)) {
+            return;
+        }
+
         if ($this->sortField === $field) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
@@ -48,9 +65,8 @@ class Index extends Component
 
     public function getStatistics(): array
     {
-        $branchId = auth()->user()->branch_id;
-
-        $stats = InventoryBatch::where('branch_id', $branchId)
+        // InventoryBatch is branch-scoped. Do not manually force the user's branch.
+        $stats = InventoryBatch::query()
             ->selectRaw('
                 COUNT(*) as total_batches,
                 COUNT(CASE WHEN status = ? THEN 1 END) as active_batches,
@@ -67,12 +83,9 @@ class Index extends Component
         ];
     }
 
-    #[Layout('layouts.app')]
     public function render()
     {
-        $branchId = auth()->user()->branch_id;
-
-        $query = InventoryBatch::where('branch_id', $branchId)
+        $query = InventoryBatch::query()
             ->with(['product', 'warehouse']);
 
         if ($this->search) {
@@ -88,6 +101,10 @@ class Index extends Component
             $query->where('status', $this->status);
         }
 
+        // Defensive: ensure sortField is always safe (e.g. when set from query params).
+        if (! in_array($this->sortField, $this->allowedSortFields, true)) {
+            $this->sortField = 'created_at';
+        }
         $query->orderBy($this->sortField, $this->sortDirection);
 
         $batches = $query->paginate(15);

@@ -17,6 +17,12 @@ class OfflineSales extends Component
 
     public ?int $branchId = null;
 
+    /**
+     * Global branch context selected from the sidebar switcher.
+     * If set, lock this report to that branch.
+     */
+    public ?int $branchContextId = null;
+
     public ?string $dateFrom = null;
 
     public ?string $dateTo = null;
@@ -27,6 +33,11 @@ class OfflineSales extends Component
         $user = Auth::user();
         if (! $user || ! $user->can('pos.offline.report.view')) {
             abort(403);
+        }
+
+        $this->branchContextId = current_branch_id();
+        if ($this->branchContextId) {
+            $this->branchId = $this->branchContextId;
         }
     }
 
